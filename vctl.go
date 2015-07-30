@@ -1,8 +1,10 @@
 package main
 
 import (
+	"html/template"
 	"io/ioutil"
 	"log"
+	"net/http"
 )
 
 type Page struct {
@@ -16,7 +18,7 @@ func (p *Page) save() error {
 }
 
 func loadPage(title string) (*Page, error) {
-	filename := title + ".txt"
+	filename := title + ".html"
 	body, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return nil, err
@@ -24,13 +26,18 @@ func loadPage(title string) (*Page, error) {
 	return &Page{Title: title, Body: body}, nil
 }
 
-func main() {
-	p1 := &Page{Title: "VersionCtl", Body: []byte("Eventually a go template...")}
-	p1.save()
-
-	p2, err := loadPage("VersionCtl")
+func viewHandler(w http.ResponseWriter, r *http.Request) {
+	title := "versionctl"
+	p, err := loadPage(title)
 	if err != nil {
-		log.Println(err)
+		p = &Page{Title: title}
 	}
-	log.Println(string(p2.Body))
+	t, _ := template.ParseFiles("versionctl.html")
+	t.Execute(w, p)
+	log.Println("Serving:\n", string(p.Title), string(p.Body))
+}
+
+func main() {
+	http.HandleFunc("/", viewHandler)
+	http.ListenAndServe(":9000", nil)
 }
