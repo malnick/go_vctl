@@ -8,12 +8,6 @@ import (
 	"net/http"
 )
 
-// Our bare page
-type Page struct {
-	Title string
-	Body  []byte
-}
-
 // Request for Puppet Versions: "http://puppet.ec2.srcclr.com:1015/versions"
 type PuppetVersions struct {
 	AnalyticsVersionProduction       string `json:"analytics_version_production"`
@@ -36,6 +30,13 @@ type PuppetVersions struct {
 	VulnerabilitiesVersionQa         string `json:"vulnerabilities_version_qa"`
 	WebhooksVersionProduction        string `json:"webhooks_version_production"`
 	WebhooksVersionQa                string `json:"webhooks_version_qa"`
+}
+
+// Our bare page
+type Page struct {
+	Title string
+	Body  []byte
+	Pv    *PuppetVersions
 }
 
 func puppetversions(url string) (*PuppetVersions, error) {
@@ -63,18 +64,26 @@ func puppetversions(url string) (*PuppetVersions, error) {
 	return &v, nil
 }
 
-func (p *Page) save() error {
-	filename := p.Title + ".txt"
-	return ioutil.WriteFile(filename, p.Body, 0600)
-}
-
 func loadPage(title string) (*Page, error) {
+	pv, err := puppetversions("http://puppet.ec2.srcclr.com:1015/versions")
+	if err != nil {
+		log.Println("Failed to get Puppet Versions from http://puppet.ec2.srcclr.com:1015/versions\n")
+		log.Println(err)
+	}
+
 	filename := title + ".html"
 	body, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return nil, err
 	}
-	return &Page{Title: title, Body: body}, nil
+	log.Println("WebHooks Version QA: ", string(pv.WebhooksVersionQa))
+
+	return &Page{
+			Title: title,
+			Body:  body,
+			Pv:    pv,
+		},
+		nil
 }
 
 func viewHandler(w http.ResponseWriter, r *http.Request) {
@@ -84,10 +93,7 @@ func viewHandler(w http.ResponseWriter, r *http.Request) {
 		p = &Page{Title: title}
 	}
 
-	// Get Puppet Versions for template
-	pv, _ := puppetversions("http://puppet.ec2.srcclr.com:1015/versions")
-	log.Println("WebHooks Version QA: ", string(pv.WebhooksVersionQa))
-
+	// Parse the template, execute and write it to stdout for good measure
 	t, _ := template.ParseFiles("versionctl.html")
 	t.Execute(w, p)
 	log.Println("Serving:\n", string(p.Title), string(p.Body))
