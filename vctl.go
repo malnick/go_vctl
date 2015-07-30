@@ -8,31 +8,6 @@ import (
 	"net/http"
 )
 
-// Request for Puppet Versions: "http://puppet.ec2.srcclr.com:1015/versions"
-//type PuppetVersions struct {
-//	ServiceName string
-//	AnalyticsVersionProduction       string `json:"analytics_version_production"`
-//	AnalyticsVersionQa               string `json:"analytics_version_qa"`
-//	BlogVersionProduction            string `json:"blog_version_production"`
-//	FrontendStaticVersionDev         string `json:"frontend_static_version_dev"`
-//	FrontendStaticVersionProduction  string `json:"frontend_static_version_production"`
-//	FrontendStaticVersionQa          string `json:"frontend_static_version_qa"`
-//	LibrarianVersionProduction       string `json:"librarian_version_production"`
-//	LibrarianVersionQa               string `json:"librarian_version_qa"`
-//	NotificationsVersionProduction   string `json:"notifications_version_production"`
-//	NotificationsVersionQa           string `json:"notifications_version_qa"`
-//	PlatformVersionProduction        string `json:"platform_version_production"`
-//	PlatformVersionQa                string `json:"platform_version_qa"`
-//	ScmAgentVersionProduction        string `json:"scm_agent_version_production"`
-//	ScmAgentVersionQa                string `json:"scm_agent_version_qa"`
-//	SearchVersionProduction          string `json:"search_version_production"`
-//	SearchVersionQa                  string `json:"search_version_qa"`
-//	VulnerabilitiesVersionProduction string `json:"vulnerabilities_version_production"`
-//	VulnerabilitiesVersionQa         string `json:"vulnerabilities_version_qa"`
-//	WebhooksVersionProduction        string `json:"webhooks_version_production"`
-//	WebhooksVersionQa                string `json:"webhooks_version_qa"`
-//}
-
 type PuppetVersions map[string]interface{}
 
 // Our bare page
