@@ -12,14 +12,14 @@ import (
 type PuppetVersions map[string]interface{}
 
 // A map for Production Versions JSON
-type ProductionVersions map[string]interface{}
+type RunningServices map[string]interface{}
 
 // Our bare page
 type Page struct {
 	Title string
 	Body  []byte
 	Pv    PuppetVersions
-	Prodv ProductionVersions
+	Rv    RunningServices
 }
 
 func puppetversions(url string) (PuppetVersions, error) {
@@ -72,8 +72,14 @@ func getServices(url string) (map[string]interface{}, error) {
 	return available_services, nil
 }
 
-func parseInfo(info map[string]interface{}) (version string, err error) {
-
+func parseInfo(name string, info map[string]string) (version string, err error) {
+	for k, v := range info {
+		for key, value := range info {
+			version := info["version"]
+			return version, nil
+		}
+	}
+	return "Didn't parse the info map", err
 }
 
 func getVersions(services map[string]interface{}) (running_versions map[string]interface{}, err error) {
@@ -85,29 +91,34 @@ func getVersions(services map[string]interface{}) (running_versions map[string]i
 				// If our string has one component it's a service address
 				if len(query_arry) == 1 {
 					mgmt_ip := query_arry[0]
+
+					// Add info endpoint
+					info_uri_slice := []string{mgmt_ip, "/info"}
+					info_uri := strings.Join(info_uri_slice, "")
 					log.Println("Querying SERVICE address for ", service_name, ": ", mgmt_ip)
 					// Query the URI
-					resp, err := http.Get(mgmt_ip)
+					resp, err := http.Get(info_uri)
 					defer resp.Body.Close()
 					if err != nil {
 						log.Println("ERROR querying ", service_name, " ", err)
 						return nil, err
 					}
-					// Unmarshel data to something usable
+					// Get data and unmarshel the JSON to our map
 					jsonDataFromHttp, err := ioutil.ReadAll(resp.Body)
 					if err != nil {
 						log.Println("ERROR unmarsheling data for ", service_name, " from ", jsonDataFromHttp)
 						return nil, err
 					}
-
 					var info_response map[string]interface{}
 					err = json.Unmarshal(jsonDataFromHttp, &info_response)
 					if err != nil {
 						return nil, err
 					}
-
+					// Parse out the version from the response
 					log.Println("INFO for ", service_name, ":\n", info_response)
-					version := parseInfo(info_response)
+					versions := parseInfo(service_name, info_response)
+
+					return versions, nil
 
 					// If our string has two components then use the mgmt address
 				} else if len(query_arry) == 2 {
@@ -153,7 +164,7 @@ func loadPage(title string) (*Page, error) {
 
 	// Get running versions
 	log.Println("Getting running versions for ", prs)
-	prv, err := getVersions(prs)
+	rv, err := getVersions(prs)
 	if err != nil {
 		log.Println("Failed getting versions for ", prs)
 	}
@@ -170,7 +181,7 @@ func loadPage(title string) (*Page, error) {
 			Title: title,
 			Body:  body,
 			Pv:    pv,
-			Prodv: prv,
+			Rv:    rv,
 		},
 		nil
 }
