@@ -47,7 +47,7 @@ func puppetversions(url string) (PuppetVersions, error) {
 	return v, nil
 }
 
-func productionversions(url string) (ProductionVersions, error) {
+func getServices(url string) (map[string]interface{}, error) {
 	resp, err := http.Get(url)
 	defer resp.Body.Close()
 	if err != nil {
@@ -60,16 +60,16 @@ func productionversions(url string) (ProductionVersions, error) {
 		return nil, err
 	}
 
-	//available_services := make(map[string]interface{})
-	var v ProductionVersions
-	err = json.Unmarshal(jsonDataFromHttp, &v)
+	available_services := make(map[string]interface{})
+
+	err = json.Unmarshal(jsonDataFromHttp, &available_services)
 	if err != nil {
 		return nil, err
 	}
 
-	log.Println("AVAILABLE SERVICES: ", v)
+	log.Println("AVAILABLE SERVICES for ", url, ":\n", available_services)
 
-	return v, nil
+	return available_services, nil
 }
 
 func loadPage(title string) (*Page, error) {
@@ -83,7 +83,7 @@ func loadPage(title string) (*Page, error) {
 
 	// Get running versions
 	log.Println("Getting available services...")
-	prv, err := productionversions("http://localhost:3000/services")
+	prv, err := getServices("http://localhost:3000/services")
 	if err != nil {
 		log.Println("Failed getting production versions")
 	}
@@ -93,8 +93,8 @@ func loadPage(title string) (*Page, error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Println("VERSIONS\n")
-	log.Println("%v", pv["scm_agent_version_production"])
+
+	log.Println("Puppet Versions: ", pv)
 
 	return &Page{
 			Title: title,
