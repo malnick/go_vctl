@@ -72,6 +72,69 @@ func getServices(url string) (map[string]interface{}, error) {
 	return available_services, nil
 }
 
+func parseInfo(info map[string]interface{}) (version string, err error) {
+
+}
+
+func getVersions(services map[string]interface{}) (running_versions map[string]interface{}, err error) {
+	for key, service_name := range services {
+		for service, ip_arry := range service_name {
+			for _, ip_address := range ip_arry {
+				query_arry := strings.Fields(ip_address)
+
+				// If our string has one component it's a service address
+				if len(query_arry) == 1 {
+					mgmt_ip := query_arry[0]
+					log.Println("Querying SERVICE address for ", service_name, ": ", mgmt_ip)
+					// Query the URI
+					resp, err := http.Get(mgmt_ip)
+					defer resp.Body.Close()
+					if err != nil {
+						log.Println("ERROR querying ", service_name, " ", err)
+						return nil, err
+					}
+					// Unmarshel data to something usable
+					jsonDataFromHttp, err := ioutil.ReadAll(resp.Body)
+					if err != nil {
+						log.Println("ERROR unmarsheling data for ", service_name, " from ", jsonDataFromHttp)
+						return nil, err
+					}
+
+					var info_response map[string]interface{}
+					err = json.Unmarshal(jsonDataFromHttp, &info_response)
+					if err != nil {
+						return nil, err
+					}
+
+					log.Println("INFO for ", service_name, ":\n", info_response)
+					version := parseInfo(info_response)
+
+					// If our string has two components then use the mgmt address
+				} else if len(query_arry) == 2 {
+					mgmt_ip := query_arry[1]
+					log.Println("Querying MGMT address for ", service_name, ": ", mgmt_ip)
+					resp, err := http.Get(mgmt_ip)
+					defer resp.Body.Close()
+					if err != nil {
+						log.Println("ERROR querying ", service_name, " ", err)
+						return nil, err
+					}
+
+					jsonDataFromHttp, err := ioutil.ReadAll(resp.Body)
+					if err != nil {
+						log.Println("ERROR unmarsheling data for ", service_name, " from ", jsonDataFromHttp)
+						return nil, err
+					}
+					// If our string as more than two components, error
+				} else if len(query_arry) > 2 {
+					return nil, err
+				}
+			}
+		}
+	}
+
+}
+
 func loadPage(title string) (*Page, error) {
 	// Get the versions from the puppet master
 	log.Println("Getting Puppet Versions - Make sure VPN is on!")
@@ -81,11 +144,18 @@ func loadPage(title string) (*Page, error) {
 		log.Println(err)
 	}
 
-	// Get running versions
+	// Get production running services, prs
 	log.Println("Getting available services...")
-	prv, err := getServices("http://localhost:3000/services")
+	prs, err := getServices("http://localhost:3000/services")
 	if err != nil {
 		log.Println("Failed getting production versions")
+	}
+
+	// Get running versions
+	log.Println("Getting running versions for ", prs)
+	prv, err := getVersions(prs)
+	if err != nil {
+		log.Println("Failed getting versions for ", prs)
 	}
 
 	filename := title + ".html"
