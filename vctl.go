@@ -81,29 +81,30 @@ func getServices(url string) (interface{}, error) {
 //	return "Didn't parse the info map", err
 //}
 
-func queryServiceVersion(endpoint) (string, error) {
+func queryServiceVersion(endpoint string) (version string, err error) {
 	log.Println("Querying SERVICE address: ", endpoint)
 	// Query the URI
 	resp, err := http.Get(endpoint)
 	defer resp.Body.Close()
 	if err != nil {
 		log.Println("ERROR querying ", endpoint, " ", err)
-		return nil, err
+		return "Failed to get server response for endpoint", err
 	}
 	// Get data and unmarshel the JSON to our map
 	jsonDataFromHttp, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		log.Println("ERROR unmarsheling data for ", service_name, " from ", jsonDataFromHttp)
-		return nil, err
+		log.Println("ERROR unmarsheling data for ", jsonDataFromHttp)
+		return "Failed to read JSON", err
 	}
-	var info_response map[string]string
+	var info_response interface{}
 	err = json.Unmarshal(jsonDataFromHttp, &info_response)
 	if err != nil {
-		return nil, err
+		return "Failed to get info response ", err
 	}
 	// Parse out the version from the response
-	log.Println("INFO for ", info_uri, ":\n", info_response)
+	log.Println("INFO for ", endpoint, ":\n", info_response)
 
+	return version, nil
 }
 
 func getVersions(services interface{}) (runningversions map[string]map[string]string, err error) {
@@ -117,10 +118,7 @@ func getVersions(services interface{}) (runningversions map[string]map[string]st
 		case map[string]interface{}:
 			for name, endpoints := range values {
 				log.Println("Found service: ", name)
-				log.Println("Available endpoints: ", endpoints)
-
 				rv[name] = make(map[string]string)
-
 				switch eps := endpoints.(type) {
 				case []interface{}:
 					for _, ep := range eps {
@@ -132,13 +130,12 @@ func getVersions(services interface{}) (runningversions map[string]map[string]st
 								log.Println("IP 1: ", query_arry[0])
 								log.Println("IP 2: ", query_arry[1])
 								info_ep := query_arry[1]
-								rv[name][info_ep] = "blah"
-
+								version, _ := queryServiceVersion(info_ep)
+								rv[name][info_ep] = version
 							} else {
 								log.Println("IP 1: ", query_arry[0])
 								info_ep := query_arry[0]
 								rv[name][info_ep] = "blah"
-
 							}
 						}
 					}
