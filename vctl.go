@@ -32,16 +32,12 @@ func colorize(versions []string) (color string, err error) {
 	if len(versions) > 1 {
 		for i := 0; i < len(versions); i++ {
 			if versions[i] == "Failed" || versions[i+1] == "Failed" {
-				log.Println("Refusing to compare failed info repsonse: ", versions[i], " and ", versions[i+1])
 				return "green", nil
 			}
-			log.Println("Comparing: ", versions[i], " ", versions[i+1])
 			if versions[i] == versions[i+1] {
-				log.Println("COLORS MATCH!")
 				color = "green"
 				return color, nil
 			} else {
-				log.Println("NO COLOR MATCH")
 				color = "red"
 				return color, nil
 			}
@@ -73,21 +69,17 @@ func compare(puppet_v map[string]interface{}, qa_v map[string]map[string]string)
 		// Create regex match for service name
 		p_name_arry := strings.Split(p_name, "_")
 		match_name := p_name_arry[0]
-		log.Println("MATCH NAME SVC: ", match_name, p_name_arry)
 		match_svc, _ := regexp.Compile(match_name)
-
 		pv_string := pv.(string)
+		// Match QA map
 		if match_qa.MatchString(p_name) {
-			log.Println("Qa MATCH: ", p_name, " ", pv, match_name)
 			// Add the name and puppet version to QA map
 			c["qa"][match_name] = make(map[string]string)
 			c["qa"][match_name]["pv"] = pv_string
 
 			// Init new array, add versions for this service
 			colorize_arry := []string{}
-
 			colorize_arry = append(colorize_arry, pv_string)
-
 			for svc_name, endpoints := range qa_v {
 				if match_svc.MatchString(svc_name) {
 					for ep, version := range endpoints {
@@ -99,9 +91,25 @@ func compare(puppet_v map[string]interface{}, qa_v map[string]map[string]string)
 				}
 			}
 		}
+		// Do it again for production env
 		if match_prod.MatchString(p_name) {
 			log.Println("Production MATCH: ", p_name, " ", pv)
-			c["production"][p_name] = make(map[string]string)
+			c["production"][match_name] = make(map[string]string)
+			c["production"][match_name]["pv"] = pv_string
+
+			// Init new array, add versions for this service
+			//			colorize_arry := []string{}
+			//			colorize_arry = append(colorize_arry, pv_string)
+			//			for svc_name, endpoints := range qa_v {
+			//				if match_svc.MatchString(svc_name) {
+			//					for ep, version := range endpoints {
+			//						c["production"][match_name][ep] = version
+			//						colorize_arry = append(colorize_arry, version)
+			//						color, _ := colorize(colorize_arry)
+			//						c["production"][match_name]["color"] = color
+			//					}
+			//				}
+			//			}
 		}
 	}
 
