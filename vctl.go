@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strings"
 )
 
 // A map for Puppet Versions JSON
@@ -72,7 +73,7 @@ func getServices(url string) (map[string]interface{}, error) {
 	return available_services, nil
 }
 
-func parseInfo(name string, info map[string]string) (version string, err error) {
+func parseInfo(info map[string]string) (version string, err error) {
 	for k, v := range info {
 		for key, value := range info {
 			version := info["version"]
@@ -82,8 +83,12 @@ func parseInfo(name string, info map[string]string) (version string, err error) 
 	return "Didn't parse the info map", err
 }
 
-func getVersions(services map[string]interface{}) (running_versions map[string]interface{}, err error) {
-	for key, service_name := range services {
+type RunningVersions struct {
+	Service map[string][]map[string]string
+}
+
+func getVersions(services map[string][]map[string]string) (runningversions RunningVersions, err error) {
+	for services, service_name := range services {
 		for service, ip_arry := range service_name {
 			for _, ip_address := range ip_arry {
 				query_arry := strings.Fields(ip_address)
@@ -91,6 +96,40 @@ func getVersions(services map[string]interface{}) (running_versions map[string]i
 				// If our string has one component it's a service address
 				if len(query_arry) == 1 {
 					mgmt_ip := query_arry[0]
+
+					// Add info endpoint
+					info_uri_slice := []string{mgmt_ip, "/info"}
+					info_uri := strings.Join(info_uri_slice, "")
+
+					log.Println("Querying SERVICE address for ", service_name, ": ", mgmt_ip)
+					// Query the URI
+					resp, err := http.Get(info_uri)
+					defer resp.Body.Close()
+					if err != nil {
+						log.Println("ERROR querying ", service_name, " ", err)
+						return nil, err
+					}
+					// Get data and unmarshel the JSON to our map
+					jsonDataFromHttp, err := ioutil.ReadAll(resp.Body)
+					if err != nil {
+						log.Println("ERROR unmarsheling data for ", service_name, " from ", jsonDataFromHttp)
+						return nil, err
+					}
+					var info_response map[string]string
+					err = json.Unmarshal(jsonDataFromHttp, &info_response)
+					if err != nil {
+						return nil, err
+					}
+					// Parse out the version from the response
+					log.Println("INFO for ", info_uri, ":\n", info_response)
+					version, _ := parseInfo(info_response)
+
+					runningversions.Service[service_name][info_uri] = append(runningversions.Service[service_name][info_uri], version)
+
+					return running_versions, nil
+					// If our string has two components then use the mgmt address
+				} else if len(query_arry) == 2 {
+					mgmt_ip := query_arry[1]
 
 					// Add info endpoint
 					info_uri_slice := []string{mgmt_ip, "/info"}
@@ -120,22 +159,6 @@ func getVersions(services map[string]interface{}) (running_versions map[string]i
 
 					return versions, nil
 
-					// If our string has two components then use the mgmt address
-				} else if len(query_arry) == 2 {
-					mgmt_ip := query_arry[1]
-					log.Println("Querying MGMT address for ", service_name, ": ", mgmt_ip)
-					resp, err := http.Get(mgmt_ip)
-					defer resp.Body.Close()
-					if err != nil {
-						log.Println("ERROR querying ", service_name, " ", err)
-						return nil, err
-					}
-
-					jsonDataFromHttp, err := ioutil.ReadAll(resp.Body)
-					if err != nil {
-						log.Println("ERROR unmarsheling data for ", service_name, " from ", jsonDataFromHttp)
-						return nil, err
-					}
 					// If our string as more than two components, error
 				} else if len(query_arry) > 2 {
 					return nil, err
