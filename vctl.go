@@ -81,9 +81,9 @@ func getServices(url string) (interface{}, error) {
 //	return "Didn't parse the info map", err
 //}
 
-func getVersions(services interface{}) (runningversions map[string][]map[string]string, err error) {
+func getVersions(services interface{}) (runningversions map[string]map[string]string, err error) {
 
-	rv := make(map[string][]map[string]string)
+	rv := make(map[string]map[string]string)
 
 	s := services.(map[string]interface{})
 	for k, v := range s {
@@ -94,7 +94,7 @@ func getVersions(services interface{}) (runningversions map[string][]map[string]
 				log.Println("Found service: ", name)
 				log.Println("Available endpoints: ", endpoints)
 
-				rv[name] = make([]map[string]string, len(s))
+				rv[name] = make(map[string]string)
 
 				switch eps := endpoints.(type) {
 				case []interface{}:
@@ -106,9 +106,14 @@ func getVersions(services interface{}) (runningversions map[string][]map[string]
 							if len(query_arry) == 2 {
 								log.Println("IP 1: ", query_arry[0])
 								log.Println("IP 2: ", query_arry[1])
+								info_ep := query_arry[1]
+								rv[name][info_ep] = "blah"
 
 							} else {
 								log.Println("IP 1: ", query_arry[0])
+								info_ep := query_arry[0]
+								rv[name][info_ep] = "blah"
+
 							}
 						}
 					}
