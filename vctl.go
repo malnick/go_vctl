@@ -81,6 +81,31 @@ func getServices(url string) (interface{}, error) {
 //	return "Didn't parse the info map", err
 //}
 
+func queryServiceVersion(endpoint) (string, error) {
+	log.Println("Querying SERVICE address: ", endpoint)
+	// Query the URI
+	resp, err := http.Get(endpoint)
+	defer resp.Body.Close()
+	if err != nil {
+		log.Println("ERROR querying ", endpoint, " ", err)
+		return nil, err
+	}
+	// Get data and unmarshel the JSON to our map
+	jsonDataFromHttp, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Println("ERROR unmarsheling data for ", service_name, " from ", jsonDataFromHttp)
+		return nil, err
+	}
+	var info_response map[string]string
+	err = json.Unmarshal(jsonDataFromHttp, &info_response)
+	if err != nil {
+		return nil, err
+	}
+	// Parse out the version from the response
+	log.Println("INFO for ", info_uri, ":\n", info_response)
+
+}
+
 func getVersions(services interface{}) (runningversions map[string]map[string]string, err error) {
 
 	rv := make(map[string]map[string]string)
@@ -133,27 +158,6 @@ func getVersions(services interface{}) (runningversions map[string]map[string]st
 //					info_uri_slice := []string{mgmt_ip, "/info"}
 //					info_uri := strings.Join(info_uri_slice, "")
 //
-//					log.Println("Querying SERVICE address for ", service_name, ": ", mgmt_ip)
-//					// Query the URI
-//					resp, err := http.Get(info_uri)
-//					defer resp.Body.Close()
-//					if err != nil {
-//						log.Println("ERROR querying ", service_name, " ", err)
-//						return nil, err
-//					}
-//					// Get data and unmarshel the JSON to our map
-//					jsonDataFromHttp, err := ioutil.ReadAll(resp.Body)
-//					if err != nil {
-//						log.Println("ERROR unmarsheling data for ", service_name, " from ", jsonDataFromHttp)
-//						return nil, err
-//					}
-//					var info_response map[string]string
-//					err = json.Unmarshal(jsonDataFromHttp, &info_response)
-//					if err != nil {
-//						return nil, err
-//					}
-//					// Parse out the version from the response
-//					log.Println("INFO for ", info_uri, ":\n", info_response)
 //					version, _ := parseInfo(info_response)
 //
 //					runningversions.Service[service_name][info_uri] = append(runningversions.Service[service_name][info_uri], version)
@@ -209,7 +213,7 @@ func loadPage(title string) (*Page, error) {
 
 	// Get running services, prs
 	log.Println("Getting available services...")
-	prs, err := getServices("http://localhost:3000/services")
+	prs, err := getServices("http://is.qa.ec2.srcclr.com:3000/services")
 	if err != nil {
 		log.Println("Failed getting production versions")
 	}
