@@ -47,15 +47,24 @@ func compare(puppet_v map[string]interface{}, qa_v map[string]map[string]string)
 	c["qa"] = make(map[string]map[string]string)
 	c["production"] = make(map[string]map[string]string)
 
-	for name, version := range puppet_v {
-		log.Println("NAME: ", name, "version ", version)
-		if match_qa.MatchString(name) {
-			log.Println("QA MATCH: ", name, " ", version)
-			c["qa"][name] = make(map[string]string)
+	for p_name, pv := range puppet_v {
+		pv_string := pv.(string)
+		log.Println("NAME: ", p_name, "version ", pv)
+		if match_qa.MatchString(p_name) {
+			log.Println("QA MATCH: ", p_name, " ", pv)
+			// Add the name and puppet version to QA map
+			c["qa"][p_name] = make(map[string]string)
+			c["qa"][p_name]["pv"] = pv_string
+
+			for _, endpoints := range qa_v {
+				for ep, version := range endpoints {
+					c["qa"][p_name][ep] = version
+				}
+			}
 		}
-		if match_prod.MatchString(name) {
-			log.Println("Production MATCH: ", name, " ", version)
-			c["production"][name] = make(map[string]string)
+		if match_prod.MatchString(p_name) {
+			log.Println("Production MATCH: ", p_name, " ", pv)
+			c["production"][p_name] = make(map[string]string)
 		}
 	}
 
