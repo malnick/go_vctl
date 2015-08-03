@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"regexp"
 	"strings"
 )
 
@@ -23,11 +24,40 @@ type Page struct {
 	//	Rv    RunningServices
 }
 
-type Compared map[string][]map[string][]map[string]string
+type Compared map[string]map[string]map[string]string
 
-func compare(puppet_v map[string]string, qa_v map[string]map[string]string) (Compared, error) {
+func compare(puppet_v map[string]interface{}, qa_v map[string]map[string]string) (Compared, error) {
+	c := make(map[string]map[string]map[string]string)
+
+	// Setup regex for QA match
+	match_qa, err := regexp.Compile(`_qa`)
+	if err != nil {
+		log.Println("Couldn't compile regex")
+		return nil, err
+	}
+	match_prod, err := regexp.Compile(`_production`)
+	if err != nil {
+		log.Println("Couldn't compile regex")
+		return nil, err
+	}
+	log.Println("COMPARE PV: ", puppet_v)
+	log.Println("COMPARE QA: ", qa_v)
+
 	// Get environments from PuppetVersions, populate top level map
-	var c Compared
+	c["qa"] = make(map[string]map[string]string)
+	c["production"] = make(map[string]map[string]string)
+
+	for name, version := range puppet_v {
+		log.Println("NAME: ", name, "version ", version)
+		if match_qa.MatchString(name) {
+			log.Println("QA MATCH: ", name, " ", version)
+			c["qa"][name] = make(map[string]string)
+		}
+		if match_prod.MatchString(name) {
+			log.Println("Production MATCH: ", name, " ", version)
+			c["production"][name] = make(map[string]string)
+		}
+	}
 
 	return c, nil
 }
@@ -188,6 +218,14 @@ func loadPage(title string) (*Page, error) {
 
 	log.Println("Running Versions: ", qa_v)
 
+	pv_map := pv.(map[string]interface{})
+	compared, _ := compare(pv_map, qa_v)
+	log.Println("COMPARED: ", compared)
+
+	for k, v := range pv_map {
+		log.Println("k: ", k, " ", "v: ", v)
+	}
+
 	filename := title + ".html"
 	body, err := ioutil.ReadFile(filename)
 	if err != nil {
@@ -215,7 +253,7 @@ func viewHandler(w http.ResponseWriter, r *http.Request) {
 	log.Println("Parsing go template...")
 	t, _ := template.ParseFiles("versionctl.html")
 	t.Execute(w, p)
-	log.Println("Serving:\n", string(p.Title), string(p.Body))
+	//log.Println("Serving:\n", string(p.Title), string(p.Body))
 }
 
 func main() {
