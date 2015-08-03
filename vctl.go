@@ -21,10 +21,9 @@ type Compared map[string]map[string]map[string]string
 
 // Our bare page
 type Page struct {
-	Title string
-	Body  []byte
-	Pv    PuppetVersions
-	//	Rv    RunningServices
+	Title   string
+	Body    []byte
+	Compare Compared
 }
 
 // What do *you* think this does?
@@ -277,10 +276,9 @@ func loadPage(title string) (*Page, error) {
 	}
 
 	return &Page{
-			Title: title,
-			Body:  body,
-			Pv:    pv,
-			//	Rv:    rv,
+			Title:   title,
+			Body:    body,
+			Compare: compared,
 		},
 		nil
 }

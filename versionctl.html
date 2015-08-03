@@ -29,12 +29,12 @@ VersionCtl for SRC:CLR
             <th>Currently Running</th>
             <th><a target="_blank" href="https://github.com/sourceclear/puppet-control/blob/production  /hieradata/versions.yaml">Defined by Puppet: versions.yaml</a> file.</th>
           </tr>
-          {{with .Pv}}
-          {{range $key, $value := .}}
+          {{with .Compare}}
+          {{range $service, $value := .}}
           <tr>
-            <td>{{$key}}</td>
-            <td>TODO</td>
+            <td>{{$service}}</td>
             <td>{{$value}}</td>
+            <td>{{$service}}</td>
           </tr>
           {{end}}
           {{end}}
