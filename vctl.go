@@ -83,11 +83,14 @@ func getServices(url string) (interface{}, error) {
 
 func queryServiceVersion(endpoint string) (version string, err error) {
 	log.Println("Querying SERVICE address: ", endpoint)
+	query_arry := []string{"http://", endpoint, "/info"}
+	query := strings.Join(query_arry, "")
+	log.Println("Query string: ", query)
 	// Query the URI
-	resp, err := http.Get(endpoint)
+	resp, err := http.Get(query)
 	defer resp.Body.Close()
 	if err != nil {
-		log.Println("ERROR querying ", endpoint, " ", err)
+		log.Println("ERROR querying ", query, " ", err)
 		return "Failed to get server response for endpoint", err
 	}
 	// Get data and unmarshel the JSON to our map
@@ -104,6 +107,19 @@ func queryServiceVersion(endpoint string) (version string, err error) {
 	// Parse out the version from the response
 	log.Println("INFO for ", endpoint, ":\n", info_response)
 
+	info_map := info_response.(map[string]interface{})
+	for _, values := range info_map {
+		log.Println("String: ", values)
+		sub_info_map := values.(map[string]interface{})
+		for key, info := range sub_info_map {
+			string_info := info.(string)
+			log.Println("Sub info: ", string_info)
+			if key == "version" {
+				log.Println("Version: ", string_info)
+				return string_info, nil
+			}
+		}
+	}
 	return version, nil
 }
 
