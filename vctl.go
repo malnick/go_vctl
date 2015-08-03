@@ -16,6 +16,9 @@ type PuppetVersions interface{}
 // A map for Production Versions JSON
 type QaVersions interface{}
 
+// The final map to be passed to template
+type Compared map[string]map[string]map[string]string
+
 // Our bare page
 type Page struct {
 	Title string
@@ -24,7 +27,23 @@ type Page struct {
 	//	Rv    RunningServices
 }
 
-type Compared map[string]map[string]map[string]string
+// What do *you* think this does?
+func colorize(versions []string) (color string, err error) {
+	if len(versions) > 0 {
+		for i, version := range versions {
+			if version[i] == version[i+1] {
+				color = "green"
+				return color, nil
+			} else {
+				color = "red"
+				return color, nil
+			}
+		}
+	} else {
+		return "green", nil
+	}
+	return "versions not an array?", err
+}
 
 func compare(puppet_v map[string]interface{}, qa_v map[string]map[string]string) (Compared, error) {
 	c := make(map[string]map[string]map[string]string)
@@ -56,9 +75,16 @@ func compare(puppet_v map[string]interface{}, qa_v map[string]map[string]string)
 			c["qa"][p_name] = make(map[string]string)
 			c["qa"][p_name]["pv"] = pv_string
 
+			// Init new array, add versions for this service
+			colorize_arry := []string{}
+			colorize_arry = append(colorize_arry, pv_string)
+
 			for _, endpoints := range qa_v {
 				for ep, version := range endpoints {
 					c["qa"][p_name][ep] = version
+					colorize_arry = append(colorize_arry, version)
+					color, _ := colorize(colorize_arry)
+					c["qa"][p_name]["color"] = color
 				}
 			}
 		}
@@ -229,10 +255,9 @@ func loadPage(title string) (*Page, error) {
 
 	pv_map := pv.(map[string]interface{})
 	compared, _ := compare(pv_map, qa_v)
-	log.Println("COMPARED: ", compared)
 
-	for k, v := range pv_map {
-		log.Println("k: ", k, " ", "v: ", v)
+	for k, v := range compared {
+		log.Println(k, " ", v, "\n")
 	}
 
 	filename := title + ".html"
