@@ -70,24 +70,32 @@ func compare(puppet_v map[string]interface{}, qa_v map[string]map[string]string)
 	c["production"] = make(map[string]map[string]string)
 
 	for p_name, pv := range puppet_v {
+		// Create regex match for service name
+		p_name_arry := strings.Split(p_name, "_")
+		match_name := p_name_arry[0]
+		log.Println("MATCH NAME SVC: ", match_name, p_name_arry)
+		match_svc, _ := regexp.Compile(match_name)
+
 		pv_string := pv.(string)
 		if match_qa.MatchString(p_name) {
-			log.Println("Qa MATCH: ", p_name, " ", pv)
+			log.Println("Qa MATCH: ", p_name, " ", pv, match_name)
 			// Add the name and puppet version to QA map
-			c["qa"][p_name] = make(map[string]string)
-			c["qa"][p_name]["pv"] = pv_string
+			c["qa"][match_name] = make(map[string]string)
+			c["qa"][match_name]["pv"] = pv_string
 
 			// Init new array, add versions for this service
 			colorize_arry := []string{}
 
 			colorize_arry = append(colorize_arry, pv_string)
 
-			for _, endpoints := range qa_v {
-				for ep, version := range endpoints {
-					c["qa"][p_name][ep] = version
-					colorize_arry = append(colorize_arry, version)
-					color, _ := colorize(colorize_arry)
-					c["qa"][p_name]["color"] = color
+			for svc_name, endpoints := range qa_v {
+				if match_svc.MatchString(svc_name) {
+					for ep, version := range endpoints {
+						c["qa"][match_name][ep] = version
+						colorize_arry = append(colorize_arry, version)
+						color, _ := colorize(colorize_arry)
+						c["qa"][match_name]["color"] = color
+					}
 				}
 			}
 		}
