@@ -82,6 +82,9 @@ func getServices(url string) (interface{}, error) {
 //}
 
 func getVersions(services interface{}) (runningversions map[string][]map[string]string, err error) {
+
+	rv := make(map[string][]map[string]string)
+
 	s := services.(map[string]interface{})
 	for k, v := range s {
 		log.Println("Ranging over ", k)
@@ -91,7 +94,7 @@ func getVersions(services interface{}) (runningversions map[string][]map[string]
 				log.Println("Found service: ", name)
 				log.Println("Available endpoints: ", endpoints)
 
-				runningversions[name] = make([]map[string]string, len(s))
+				rv[name] = make([]map[string]string, len(s))
 
 				switch eps := endpoints.(type) {
 				case []interface{}:
@@ -113,6 +116,7 @@ func getVersions(services interface{}) (runningversions map[string][]map[string]
 			}
 		}
 	}
+	runningversions = rv
 	return runningversions, nil
 }
 
