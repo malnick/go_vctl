@@ -29,12 +29,19 @@ type Page struct {
 
 // What do *you* think this does?
 func colorize(versions []string) (color string, err error) {
-	if len(versions) > 0 {
-		for i, version := range versions {
-			if version[i] == version[i+1] {
+	if len(versions) > 1 {
+		for i := 0; i < len(versions); i++ {
+			if versions[i] == "Failed" || versions[i+1] == "Failed" {
+				log.Println("Refusing to compare failed info repsonse: ", versions[i], " and ", versions[i+1])
+				return "green", nil
+			}
+			log.Println("Comparing: ", versions[i], " ", versions[i+1])
+			if versions[i] == versions[i+1] {
+				log.Println("COLORS MATCH!")
 				color = "green"
 				return color, nil
 			} else {
+				log.Println("NO COLOR MATCH")
 				color = "red"
 				return color, nil
 			}
@@ -47,7 +54,6 @@ func colorize(versions []string) (color string, err error) {
 
 func compare(puppet_v map[string]interface{}, qa_v map[string]map[string]string) (Compared, error) {
 	c := make(map[string]map[string]map[string]string)
-
 	// Setup regex for QA match
 	match_qa, err := regexp.Compile(`_qa`)
 	if err != nil {
@@ -59,24 +65,21 @@ func compare(puppet_v map[string]interface{}, qa_v map[string]map[string]string)
 		log.Println("Couldn't compile regex")
 		return nil, err
 	}
-	log.Println("COMPARE PV: ", puppet_v)
-	log.Println("COMPARE QA: ", qa_v)
-
 	// Get environments from PuppetVersions, populate top level map
 	c["qa"] = make(map[string]map[string]string)
 	c["production"] = make(map[string]map[string]string)
 
 	for p_name, pv := range puppet_v {
 		pv_string := pv.(string)
-		log.Println("NAME: ", p_name, "version ", pv)
 		if match_qa.MatchString(p_name) {
-			log.Println("QA MATCH: ", p_name, " ", pv)
+			log.Println("Qa MATCH: ", p_name, " ", pv)
 			// Add the name and puppet version to QA map
 			c["qa"][p_name] = make(map[string]string)
 			c["qa"][p_name]["pv"] = pv_string
 
 			// Init new array, add versions for this service
 			colorize_arry := []string{}
+
 			colorize_arry = append(colorize_arry, pv_string)
 
 			for _, endpoints := range qa_v {
@@ -149,7 +152,6 @@ func queryServiceVersion(endpoint string) (version string, err error) {
 	log.Println("Querying SERVICE address: ", endpoint)
 	query_arry := []string{"http://", endpoint, "/info"}
 	query := strings.Join(query_arry, "")
-	log.Println("Query string: ", query)
 	// Query the URI
 	resp, err := http.Get(query)
 	defer resp.Body.Close()
@@ -166,18 +168,15 @@ func queryServiceVersion(endpoint string) (version string, err error) {
 	var info_response interface{}
 	err = json.Unmarshal(jsonDataFromHttp, &info_response)
 	if err != nil {
-		return "Failed to get info response ", err
+		return "Failed", err
 	}
 	// Parse out the version from the response
-	log.Println("INFO for ", endpoint, ":\n", info_response)
-
 	info_map := info_response.(map[string]interface{})
+	log.Println("Response: ", info_response)
 	for _, values := range info_map {
-		log.Println("String: ", values)
 		sub_info_map := values.(map[string]interface{})
 		for key, info := range sub_info_map {
 			string_info := info.(string)
-			log.Println("Sub info: ", string_info)
 			if key == "version" {
 				log.Println("Version: ", string_info)
 				return string_info, nil
@@ -192,8 +191,7 @@ func getVersions(services interface{}) (runningversions map[string]map[string]st
 	rv := make(map[string]map[string]string)
 
 	s := services.(map[string]interface{})
-	for k, v := range s {
-		log.Println("Ranging over ", k)
+	for _, v := range s {
 		switch values := v.(type) {
 		case map[string]interface{}:
 			for name, endpoints := range values {
@@ -202,18 +200,14 @@ func getVersions(services interface{}) (runningversions map[string]map[string]st
 				switch eps := endpoints.(type) {
 				case []interface{}:
 					for _, ep := range eps {
-						log.Println("Endpoint: ", ep)
 						switch ep_string := ep.(type) {
 						case string:
 							query_arry := strings.Fields(ep_string)
 							if len(query_arry) == 2 {
-								log.Println("IP 1: ", query_arry[0])
-								log.Println("IP 2: ", query_arry[1])
 								info_ep := query_arry[1]
 								version, _ := queryServiceVersion(info_ep)
 								rv[name][info_ep] = version
 							} else {
-								log.Println("IP 1: ", query_arry[0])
 								info_ep := query_arry[0]
 								rv[name][info_ep] = "blah"
 							}
