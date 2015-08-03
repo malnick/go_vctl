@@ -6,14 +6,14 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	//	"strings"
+	"strings"
 )
 
 // A map for Puppet Versions JSON
 type PuppetVersions map[string]interface{}
 
 // A map for Production Versions JSON
-type RunningServices map[string]interface{}
+type RunningServices interface{}
 
 // Our bare page
 type Page struct {
@@ -81,22 +81,33 @@ func getServices(url string) (interface{}, error) {
 //	return "Didn't parse the info map", err
 //}
 
-func getVersions(services map[string]interface{}) (runningversions map[string]map[string]string, err error) {
+func getVersions(services interface{}) (runningversions map[string][]map[string]string, err error) {
 	s := services.(map[string]interface{})
 	for k, v := range s {
-		switch name := v.(type) {
-		case string:
-			log.Println("SERVICE NAME: ", name)
-		case []interface{}:
-			for service, ips := range name {
-				switch ip_arry := ips.(type) {
-				case []string:
-					log.Println("Ips: ", ips)
-					for _, ip_address := range ip_arry {
-						query_arry := strings.Fields(ip_address)
+		log.Println("Ranging over ", k)
+		switch values := v.(type) {
+		case map[string]interface{}:
+			for name, endpoints := range values {
+				log.Println("Found service: ", name)
+				log.Println("Available endpoints: ", endpoints)
 
-						log.Println("IP 1: ", query_arry[0])
-						log.Println("IP 2: ", query_arry[1])
+				runningversions[name] = make([]map[string]string, len(s))
+
+				switch eps := endpoints.(type) {
+				case []interface{}:
+					for _, ep := range eps {
+						log.Println("Endpoint: ", ep)
+						switch ep_string := ep.(type) {
+						case string:
+							query_arry := strings.Fields(ep_string)
+							if len(query_arry) == 2 {
+								log.Println("IP 1: ", query_arry[0])
+								log.Println("IP 2: ", query_arry[1])
+
+							} else {
+								log.Println("IP 1: ", query_arry[0])
+							}
+						}
 					}
 				}
 			}
@@ -185,8 +196,9 @@ func loadPage(title string) (*Page, error) {
 		log.Println("Failed to get Puppet Versions from http://puppet.ec2.srcclr.com:1015/versions\n")
 		log.Println(err)
 	}
+	log.Println("Puppet Versions: ", pv)
 
-	// Get production running services, prs
+	// Get running services, prs
 	log.Println("Getting available services...")
 	prs, err := getServices("http://localhost:3000/services")
 	if err != nil {
@@ -194,6 +206,7 @@ func loadPage(title string) (*Page, error) {
 	}
 
 	log.Println("RUNNING SERVICES @localhost:3000/services: ", prs)
+
 	// Get running versions
 	log.Println("Getting running versions for ", prs)
 	rv, err := getVersions(prs)
@@ -201,7 +214,7 @@ func loadPage(title string) (*Page, error) {
 		log.Println("Failed getting versions for ", prs)
 	}
 
-	log.Println("Running Versions: ", prs)
+	log.Println("Running Versions: ", rv)
 
 	filename := title + ".html"
 	body, err := ioutil.ReadFile(filename)
@@ -209,13 +222,11 @@ func loadPage(title string) (*Page, error) {
 		return nil, err
 	}
 
-	log.Println("Puppet Versions: ", pv)
-
 	return &Page{
 			Title: title,
 			Body:  body,
 			Pv:    pv,
-			//		Rv:    rv,
+			Rv:    rv,
 		},
 		nil
 }
