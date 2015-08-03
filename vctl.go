@@ -10,17 +10,26 @@ import (
 )
 
 // A map for Puppet Versions JSON
-type PuppetVersions map[string]interface{}
+type PuppetVersions interface{}
 
 // A map for Production Versions JSON
-type RunningServices interface{}
+type QaVersions interface{}
 
 // Our bare page
 type Page struct {
 	Title string
 	Body  []byte
 	Pv    PuppetVersions
-	Rv    RunningServices
+	//	Rv    RunningServices
+}
+
+type Compared map[string][]map[string][]map[string]string
+
+func compare(puppet_v map[string]string, qa_v map[string]map[string]string) (Compared, error) {
+	// Get environments from PuppetVersions, populate top level map
+	var c Compared
+
+	return c, nil
 }
 
 func puppetversions(url string) (PuppetVersions, error) {
@@ -165,21 +174,19 @@ func loadPage(title string) (*Page, error) {
 
 	// Get running services, prs
 	log.Println("Getting available services...")
-	prs, err := getServices("http://is.qa.ec2.srcclr.com:3000/services")
+	qa_rs, err := getServices("http://is.qa.ec2.srcclr.com:3000/services")
 	if err != nil {
 		log.Println("Failed getting production versions")
 	}
 
-	log.Println("RUNNING SERVICES @localhost:3000/services: ", prs)
+	log.Println("RUNNING SERVICES QA: ", qa_rs)
 
-	// Get running versions
-	log.Println("Getting running versions for ", prs)
-	rv, err := getVersions(prs)
+	qa_v, err := getVersions(qa_rs)
 	if err != nil {
-		log.Println("Failed getting versions for ", prs)
+		log.Println("Failed getting versions for ", qa_rs)
 	}
 
-	log.Println("Running Versions: ", rv)
+	log.Println("Running Versions: ", qa_v)
 
 	filename := title + ".html"
 	body, err := ioutil.ReadFile(filename)
@@ -191,7 +198,7 @@ func loadPage(title string) (*Page, error) {
 			Title: title,
 			Body:  body,
 			Pv:    pv,
-			Rv:    rv,
+			//	Rv:    rv,
 		},
 		nil
 }
