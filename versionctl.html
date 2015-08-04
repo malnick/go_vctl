@@ -20,25 +20,27 @@ VersionCtl for SRC:CLR
       </div>
     <div class="panel panel-default">
       <div class="panel-heading">
-        <h3 class="panel-title">All SRC:CLR Versioned Docker Services</h3>
+        <h3 class="panel-title">SRC:CLR Versioned Services</h3>
       </div>
       <div class="panel-body">
-        <table class="table table-bordered">
+       {{with .Compare}}
+       {{range $service, $values := .}}
+       <table class="table table-bordered">
+          {{range $svc_name, $svc_data := $values}}
           <tr>
-            <th>Service</th>
+            <th>{{$service}}</th>
             <th>Currently Running</th>
             <th><a target="_blank" href="https://github.com/sourceclear/puppet-control/blob/production  /hieradata/versions.yaml">Defined by Puppet: versions.yaml</a> file.</th>
           </tr>
-          {{with .Compare}}
-          {{range $service, $value := .}}
           <tr>
-            <td>{{$service}}</td>
+            <td>{{$svc_name}}</td>
             <td>{{$value}}</td>
-            <td>{{$service}}</td>
+            <td>{{$svc_data}}</td>
           </tr>
-          {{end}}
-          {{end}}
         </table>
+        {{end}}
+        {{end}}
+        {{end}}
        </div>
       </div>
   </body> 
