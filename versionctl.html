@@ -24,18 +24,18 @@ VersionCtl for SRC:CLR
       </div>
       <div class="panel-body">
        {{with .Compare}} 
-       {{range $env, $values := .}}{{$env}}
+       {{range $env, $values := .}}
        <table class="table table-bordered">
           <tr>
-            <th>{{$env}}</th>
+            <th><b>{{$env}}</b></th>
             <th>Currently Running</th>
             <th><a target="_blank" href="https://github.com/sourceclear/puppet-control/blob/production  /hieradata/versions.yaml">Defined by Puppet: versions.yaml</a> file.</th>
           </tr>
-          {{range $svc, $values := .}}{{.}}
+          {{range $svc, $values := .}}
           <tr>
-            <td>{{$svc}}</td>
-            <td>{{$values}}</td>
-            <td>puppet verions</td>
+            <td><font color={{$values.color}}><b>{{$svc}}</b></font></td>
+            <td><font color={{$values.color}}>{{range $k, $v := $values}}{{if ne $k "pv"}}{{if ne $k "color"}} {{$k}}:{{$v}} {{end}}{{end}}{{end}}</color></td>
+            <td><font color={{$values.color}}>{{$values.pv}}</color></td>
           </tr>
           {{end}}
         </table>
