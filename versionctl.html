@@ -23,22 +23,22 @@ VersionCtl for SRC:CLR
         <h3 class="panel-title">SRC:CLR Versioned Services</h3>
       </div>
       <div class="panel-body">
-       {{with .Compare}}
-       {{range $service, $values := .}}
+       {{with .Compare}} 
+       {{range $env, $values := .}}{{$env}}
        <table class="table table-bordered">
-          {{range $svc_name, $svc_data := $values}}
           <tr>
-            <th>{{$service}}</th>
+            <th>{{$env}}</th>
             <th>Currently Running</th>
             <th><a target="_blank" href="https://github.com/sourceclear/puppet-control/blob/production  /hieradata/versions.yaml">Defined by Puppet: versions.yaml</a> file.</th>
           </tr>
+          {{range $svc, $values := .}}{{.}}
           <tr>
-            <td>{{$svc_name}}</td>
-            <td>{{$value}}</td>
-            <td>{{$svc_data}}</td>
+            <td>{{$svc}}</td>
+            <td>{{$values}}</td>
+            <td>puppet verions</td>
           </tr>
+          {{end}}
         </table>
-        {{end}}
         {{end}}
         {{end}}
        </div>
