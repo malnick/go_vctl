@@ -246,11 +246,11 @@ func loadPage(title string) (*Page, error) {
 	}
 	log.Println("Puppet Versions: ", pv)
 
-	// Get running services, prs
+	// QA
 	log.Println("Getting available services...")
 	qa_rs, err := getServices("http://is.qa.ec2.srcclr.com:3000/services")
 	if err != nil {
-		log.Println("Failed getting production versions")
+		log.Println("Failed getting qa versions")
 	}
 
 	log.Println("RUNNING SERVICES QA: ", qa_rs)
@@ -260,15 +260,34 @@ func loadPage(title string) (*Page, error) {
 		log.Println("Failed getting versions for ", qa_rs)
 	}
 
-	log.Println("Running Versions: ", qa_v)
-
-	pv_map := pv.(map[string]interface{})
-	compared, _ := compare(pv_map, qa_v)
+	log.Println("Running Versions QA: ", qa_v)
 
 	for k, v := range compared {
 		log.Println(k, " ", v, "\n")
 	}
 
+	// PRODUCTION
+	log.Println("Getting available services...")
+	prod_rs, err := getServices("http://is.ec2.srcclr.com:3000/services")
+	if err != nil {
+		log.Println("Failed getting production versions")
+	}
+
+	log.Println("RUNNING SERVICES QA: ", prod_rs)
+
+	prod_v, err := getVersions(prod_rs)
+	if err != nil {
+		log.Println("Failed getting versions for ", prod_rs)
+	}
+
+	log.Println("Running Versions PRODUCTION: ", prod_v)
+
+	pv_map := pv.(map[string]interface{})
+	compared, _ := compare(pv_map, qa_v, prod_v)
+
+	for k, v := range compared {
+		log.Println(k, " ", v, "\n")
+	}
 	filename := title + ".html"
 	body, err := ioutil.ReadFile(filename)
 	if err != nil {
