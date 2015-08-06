@@ -14,9 +14,6 @@ import (
 // A map for Puppet Versions JSON
 type PuppetVersions interface{}
 
-// A map for Production Versions JSON
-type QaVersions interface{}
-
 // The final map to be passed to template
 type Compared map[string]map[string]map[string]string
 
