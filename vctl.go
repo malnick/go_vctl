@@ -39,9 +39,11 @@ func colorize(versions []string) (color string, err error) {
 	match_fail, _ := regexp.Compile(`Failed`)
 	if len(versions) > 1 {
 		for i := 0; i < len(versions); i++ {
-			if match_fail.MatchString(versions[i]) || match_fail.MatchString(versions[i+1]) {
+			if match_fail.MatchString(versions[i]) {
 				return "orange", nil
 			}
+		}
+		for i := 0; i < len(versions); i++ {
 			if versions[i] == versions[i+1] {
 				color = "green"
 				return color, nil
