@@ -143,12 +143,11 @@ func puppetversions(url string) (PuppetVersions, error) {
 
 func getServices(url string) (interface{}, error) {
 	resp, err := http.Get(url)
-	defer resp.Body.Close()
 	if err != nil {
 		log.Println(err)
 		return nil, err
 	}
-
+	defer resp.Body.Close()
 	jsonDataFromHttp, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
