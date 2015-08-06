@@ -47,7 +47,7 @@ func colorize(versions []string) (color string, err error) {
 	return "versions not an array?", err
 }
 
-func compare(puppet_v map[string]interface{}, qa_v map[string]map[string]string) (Compared, error) {
+func compare(puppet_v map[string]interface{}, qa_v map[string]map[string]string, prod_v map[string]map[string]string) (Compared, error) {
 	c := make(map[string]map[string]map[string]string)
 	// Setup regex for QA match
 	match_qa, err := regexp.Compile(`_qa`)
@@ -97,18 +97,18 @@ func compare(puppet_v map[string]interface{}, qa_v map[string]map[string]string)
 			c["production"][match_name]["pv"] = pv_string
 
 			// Init new array, add versions for this service
-			//			colorize_arry := []string{}
-			//			colorize_arry = append(colorize_arry, pv_string)
-			//			for svc_name, endpoints := range qa_v {
-			//				if match_svc.MatchString(svc_name) {
-			//					for ep, version := range endpoints {
-			//						c["production"][match_name][ep] = version
-			//						colorize_arry = append(colorize_arry, version)
-			//						color, _ := colorize(colorize_arry)
-			//						c["production"][match_name]["color"] = color
-			//					}
-			//				}
-			//			}
+			colorize_arry := []string{}
+			colorize_arry = append(colorize_arry, pv_string)
+			for svc_name, endpoints := range prod_v {
+				if match_svc.MatchString(svc_name) {
+					for ep, version := range endpoints {
+						c["production"][match_name][ep] = version
+						colorize_arry = append(colorize_arry, version)
+						color, _ := colorize(colorize_arry)
+						c["production"][match_name]["color"] = color
+					}
+				}
+			}
 		}
 	}
 
@@ -169,11 +169,12 @@ func queryServiceVersion(endpoint string) (version string, err error) {
 	query := strings.Join(query_arry, "")
 	// Query the URI
 	resp, err := http.Get(query)
-	defer resp.Body.Close()
 	if err != nil {
 		log.Println("ERROR querying ", query, " ", err)
-		return "Failed to get server response for endpoint", err
+		return "Failed", err
 	}
+	defer resp.Body.Close()
+
 	// Get data and unmarshel the JSON to our map
 	jsonDataFromHttp, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
@@ -262,10 +263,6 @@ func loadPage(title string) (*Page, error) {
 
 	log.Println("Running Versions QA: ", qa_v)
 
-	for k, v := range compared {
-		log.Println(k, " ", v, "\n")
-	}
-
 	// PRODUCTION
 	log.Println("Getting available services...")
 	prod_rs, err := getServices("http://is.ec2.srcclr.com:3000/services")
@@ -282,12 +279,14 @@ func loadPage(title string) (*Page, error) {
 
 	log.Println("Running Versions PRODUCTION: ", prod_v)
 
+	// Build the compared map of maps of strings of other types ... blah blah blah
 	pv_map := pv.(map[string]interface{})
 	compared, _ := compare(pv_map, qa_v, prod_v)
 
 	for k, v := range compared {
 		log.Println(k, " ", v, "\n")
 	}
+
 	filename := title + ".html"
 	body, err := ioutil.ReadFile(filename)
 	if err != nil {
