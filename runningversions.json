@@ -1,9 +1,0 @@
-[]map[service_name][]map[Ip]version
-
-{
-  "build" : {
-    "name" : "acoolservice",
-    "version" : "0.3.22",
-    "description" : "some desc"
-  }
-}
