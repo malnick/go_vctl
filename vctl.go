@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"time"
 )
 
 // A map for Puppet Versions JSON
@@ -168,7 +169,11 @@ func queryServiceVersion(endpoint string) (version string, err error) {
 	query_arry := []string{"http://", endpoint, "/info"}
 	query := strings.Join(query_arry, "")
 	// Query the URI
-	resp, err := http.Get(query)
+	timeout := time.Duration(1 * time.Second)
+	client := http.Client{
+		Timeout: timeout,
+	}
+	resp, err := client.Get(query)
 	if err != nil {
 		log.Println("ERROR querying ", query, " ", err)
 		return "Failed", err
