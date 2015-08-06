@@ -14,6 +14,7 @@ import (
 var qa_urls = []string{
 	"http://is.qa.ec2.srcclr.com:3000/services",
 	"http://10.0.3.103:3000/services",
+	"http://10.0.3.126:3000/services",
 }
 
 var prod_urls = []string{
