@@ -36,10 +36,11 @@ type Page struct {
 
 // What do *you* think this does?
 func colorize(versions []string) (color string, err error) {
+	match_fail, _ := regexp.Compile(`Failed`)
 	if len(versions) > 1 {
 		for i := 0; i < len(versions); i++ {
-			if versions[i] == "Failed" || versions[i+1] == "Failed" {
-				return "green", nil
+			if match_fail.MatchString(versions[i]) || match_fail.MatchString(versions[i+1]) {
+				return "orange", nil
 			}
 			if versions[i] == versions[i+1] {
 				color = "green"
@@ -197,7 +198,7 @@ func queryServiceVersion(endpoint string) (version string, err error) {
 	resp, err := client.Get(query)
 	if err != nil {
 		log.Println("ERROR querying ", query, " ", err)
-		return "Failed", err
+		return "Failed GET Request", err
 	}
 	defer resp.Body.Close()
 
@@ -210,7 +211,7 @@ func queryServiceVersion(endpoint string) (version string, err error) {
 	var info_response interface{}
 	err = json.Unmarshal(jsonDataFromHttp, &info_response)
 	if err != nil {
-		return "Failed", err
+		return "Failed unmarshel JSON", err
 	}
 	// Parse out the version from the response
 	info_map := info_response.(map[string]interface{})
