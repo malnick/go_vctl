@@ -1,11 +1,13 @@
 package main
 
 import (
+	"encoding/gob"
 	"encoding/json"
 	"html/template"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"regexp"
 	"strings"
 	"time"
@@ -254,7 +256,7 @@ func getVersions(services map[string][]string) (runningversions map[string]map[s
 	return runningversions, nil
 }
 
-func loadPage(title string) (*Page, error) {
+func refreshState() {
 	// Get the versions from the puppet master
 	log.Println("Getting Puppet Versions - Make sure VPN is on!")
 	pv, err := puppetversions("http://puppet.ec2.srcclr.com:1015/versions")
@@ -303,6 +305,39 @@ func loadPage(title string) (*Page, error) {
 	for k, v := range compared {
 		log.Println(k, " ", v, "\n")
 	}
+	datafile, err := os.Create("compared.gob")
+	if err != nil {
+		log.Println(err)
+		os.Exit(1)
+	}
+
+	dataEncoder := gob.NewEncoder(datafile)
+	dataEncoder.Encode(compared)
+	datafile.Close()
+}
+
+func loadPage(title string) (*Page, error) {
+
+	//	for {
+	go refreshState()
+	//		time.Sleep(10000 * 10000 * 10000)
+	//	}
+
+	//read state file to compared
+	var compared Compared
+	datafile, err := os.Open("compared.gob")
+	if err != nil {
+		log.Println(err)
+		os.Exit(1)
+	}
+
+	dataDecoder := gob.NewDecoder(datafile)
+	err = dataDecoder.Decode(&compared)
+	if err != nil {
+		log.Println(err)
+		os.Exit(1)
+	}
+	datafile.Close()
 
 	filename := title + ".html"
 	body, err := ioutil.ReadFile(filename)
