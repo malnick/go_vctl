@@ -227,34 +227,22 @@ func queryServiceVersion(endpoint string) (version string, err error) {
 	return version, nil
 }
 
-func getVersions(services interface{}) (runningversions map[string]map[string]string, err error) {
+func getVersions(services map[string][]string) (runningversions map[string]map[string]string, err error) {
 
 	rv := make(map[string]map[string]string)
 
-	s := services.(map[string]interface{})
-	for _, v := range s {
-		switch values := v.(type) {
-		case map[string]interface{}:
-			for name, endpoints := range values {
-				log.Println("Found service: ", name)
-				rv[name] = make(map[string]string)
-				switch eps := endpoints.(type) {
-				case []interface{}:
-					for _, ep := range eps {
-						switch ep_string := ep.(type) {
-						case string:
-							query_arry := strings.Fields(ep_string)
-							if len(query_arry) == 2 {
-								info_ep := query_arry[1]
-								version, _ := queryServiceVersion(info_ep)
-								rv[name][info_ep] = version
-							} else {
-								info_ep := query_arry[0]
-								rv[name][info_ep] = "blah"
-							}
-						}
-					}
-				}
+	for name, endpoints := range services {
+		rv[name] = make(map[string]string)
+		for _, endpoint := range endpoints {
+			query_arry := strings.Fields(endpoint)
+			if len(query_arry) == 2 {
+				info_ep := query_arry[1]
+				version, _ := queryServiceVersion(info_ep)
+				rv[name][endpoint] = version
+			} else {
+				info_ep := query_arry[0]
+				version, _ := queryServiceVersion(info_ep)
+				rv[name][endpoint] = version
 			}
 		}
 	}
