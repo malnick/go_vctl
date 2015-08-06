@@ -11,6 +11,15 @@ import (
 	"time"
 )
 
+var qa_urls = []string{
+	"http://is.qa.ec2.srcclr.com:3000/services",
+	"http://10.0.3.103:3000/services",
+}
+
+var prod_urls = []string{
+	"http://is.ec2.srcclr.com:3000/services",
+}
+
 // A map for Puppet Versions JSON
 type PuppetVersions interface{}
 
@@ -138,23 +147,38 @@ func puppetversions(url string) (PuppetVersions, error) {
 	return v, nil
 }
 
-func getServices(url string) (interface{}, error) {
-	resp, err := http.Get(url)
-	if err != nil {
-		log.Println(err)
-		return nil, err
-	}
-	defer resp.Body.Close()
-	jsonDataFromHttp, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
+func getServices(urls []string) (map[string][]string, error) {
+	available_services := make(map[string][]string)
 
-	var available_services interface{}
+	for _, url := range urls {
+		resp, err := http.Get(url)
+		if err != nil {
+			log.Println(err)
+			return nil, err
+		}
+		defer resp.Body.Close()
+		jsonDataFromHttp, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return nil, err
+		}
 
-	err = json.Unmarshal(jsonDataFromHttp, &available_services)
-	if err != nil {
-		return nil, err
+		var services map[string]map[string][]string //interface{}
+
+		err = json.Unmarshal(jsonDataFromHttp, &services)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, v := range services {
+			log.Println("Values: ", v)
+			for name, endpoints := range v {
+				log.Println("Name: ", name, " ", endpoints)
+				available_services[name] = []string{}
+				for _, ep := range endpoints {
+					available_services[name] = append(available_services[name], ep)
+				}
+			}
+		}
 	}
 
 	return available_services, nil
@@ -250,7 +274,7 @@ func loadPage(title string) (*Page, error) {
 
 	// QA
 	log.Println("Getting available services...")
-	qa_rs, err := getServices("http://is.qa.ec2.srcclr.com:3000/services")
+	qa_rs, err := getServices(qa_urls)
 	if err != nil {
 		log.Println("Failed getting qa versions")
 	}
@@ -266,7 +290,7 @@ func loadPage(title string) (*Page, error) {
 
 	// PRODUCTION
 	log.Println("Getting available services...")
-	prod_rs, err := getServices("http://is.ec2.srcclr.com:3000/services")
+	prod_rs, err := getServices(prod_urls)
 	if err != nil {
 		log.Println("Failed getting production versions")
 	}
