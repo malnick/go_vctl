@@ -328,20 +328,20 @@ func loadPage(title string) (*Page, error) {
 	datafile, err := os.Open("compared.gob")
 	if err != nil {
 		log.Println(err)
-		os.Exit(1)
 	}
 
 	dataDecoder := gob.NewDecoder(datafile)
 	err = dataDecoder.Decode(&compared)
 	if err != nil {
 		log.Println(err)
-		os.Exit(1)
 	}
+
 	datafile.Close()
 
 	filename := title + ".html"
 	body, err := ioutil.ReadFile(filename)
 	if err != nil {
+		log.Println(err)
 		return nil, err
 	}
 
