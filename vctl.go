@@ -13,6 +13,18 @@ import (
 	"time"
 )
 
+var environment = map[string][]string{
+	"production": []string{
+		"http://is.ec2.srcclr.com:3000/services",
+	},
+
+	"qa": []string{
+		"http://is.qa.ec2.srcclr.com:3000/services",
+		"http://10.0.3.103:3000/services",
+		"http://10.0.3.126:3000/services",
+	},
+}
+
 var qa_urls = []string{
 	"http://is.qa.ec2.srcclr.com:3000/services",
 	"http://10.0.3.103:3000/services",
@@ -283,17 +295,17 @@ func refreshState() {
 	log.Println("Running Versions QA: ", qa_v)
 
 	// PRODUCTION
-	log.Println("Getting available services...")
+	log.Println("Getting available services in production...")
 	prod_rs, err := getServices(prod_urls)
 	if err != nil {
 		log.Println("Failed getting production versions")
 	}
 
-	log.Println("RUNNING SERVICES QA: ", prod_rs)
+	log.Println("RUNNING SERVICES PRODUCTION: ", prod_rs)
 
 	prod_v, err := getVersions(prod_rs)
 	if err != nil {
-		log.Println("Failed getting versions for ", prod_rs)
+		log.Println("Failed getting versions production ", prod_rs)
 	}
 
 	log.Println("Running Versions PRODUCTION: ", prod_v)
