@@ -13,7 +13,14 @@ import (
 	"time"
 )
 
-var environment = map[string][]string{
+type RunningServices struct {
+}
+
+var environments = map[string][]string{
+	"puppet": []string{
+		"http://puppet.ec2.srcclr.com:1015/versions",
+	},
+
 	"production": []string{
 		"http://is.ec2.srcclr.com:3000/services",
 	},
@@ -72,45 +79,37 @@ func colorize(versions []string) (color string, err error) {
 	return "versions not an array?", err
 }
 
-func compare(puppet_v map[string]interface{}, qa_v map[string]map[string]string, prod_v map[string]map[string]string) (Compared, error) {
+func compare(puppet_v map[string]interface{}, rv map[string]map[string]map[string]string) (Compared, error) {
 	c := make(map[string]map[string]map[string]string)
-	// Setup regex for QA match
-	match_qa, err := regexp.Compile(`_qa`)
-	if err != nil {
-		log.Println("Couldn't compile regex")
-		return nil, err
-	}
-	match_prod, err := regexp.Compile(`_production`)
-	if err != nil {
-		log.Println("Couldn't compile regex")
-		return nil, err
-	}
 	// Get environments from PuppetVersions, populate top level map
 	c["qa"] = make(map[string]map[string]string)
 	c["production"] = make(map[string]map[string]string)
 
 	for p_name, pv := range puppet_v {
-		// Create regex match for service name
-		p_name_arry := strings.Split(p_name, "_")
-		match_name := p_name_arry[0]
-		match_svc, _ := regexp.Compile(match_name)
-		pv_string := pv.(string)
-		// Match QA map
-		if match_qa.MatchString(p_name) {
-			// Add the name and puppet version to QA map
-			c["qa"][match_name] = make(map[string]string)
-			c["qa"][match_name]["pv"] = pv_string
+		for env, env_versions := range rv {
+			// Create regex match for service name
+			p_name_arry := strings.Split(p_name, "_")
+			match_name := p_name_arry[0]
+			match_env := p_name_arry[len(p_name_arry)-1]
+			match_svc, _ := regexp.Compile(match_name)
+			pv_string := pv.(string)
+			// Match QA map
+			if match_env.MatchString(p_name) {
+				// Add the name and puppet version to QA map
+				c[env][match_name] = make(map[string]string)
+				c[env][match_name]["pv"] = pv_string
 
-			// Init new array, add versions for this service
-			colorize_arry := []string{}
-			colorize_arry = append(colorize_arry, pv_string)
-			for svc_name, endpoints := range qa_v {
-				if match_svc.MatchString(svc_name) {
-					for ep, version := range endpoints {
-						c["qa"][match_name][ep] = version
-						colorize_arry = append(colorize_arry, version)
-						color, _ := colorize(colorize_arry)
-						c["qa"][match_name]["color"] = color
+				// Init new array, add versions for this service
+				colorize_arry := []string{}
+				colorize_arry = append(colorize_arry, pv_string)
+				for svc_name, endpoints := range env_versions {
+					if match_svc.MatchString(svc_name) {
+						for ep, version := range endpoints {
+							c[env][match_name][ep] = version
+							colorize_arry = append(colorize_arry, version)
+							color, _ := colorize(colorize_arry)
+							c[env][match_name]["color"] = color
+						}
 					}
 				}
 			}
@@ -278,41 +277,30 @@ func refreshState() {
 	}
 	log.Println("Puppet Versions: ", pv)
 
-	// QA
-	log.Println("Getting available services...")
-	qa_rs, err := getServices(qa_urls)
-	if err != nil {
-		log.Println("Failed getting qa versions")
+	var rs = map[string]map[string][]string{}
+	var rv = map[string]map[string]map[string]string{}
+
+	for env, urls := range environments {
+		// For each env, query the :3000/services endpoint
+		log.Println("Getting available services...")
+		rs[env] = map[string][]string{}
+		rs[env], err = getServices(urls)
+		if err != nil {
+			log.Println("Failed getting qa versions")
+		}
+		log.Println("RUNNING SERVICES: ", rs[env])
+		// Get the versions for running services
+		rv[env] = map[string]map[string]string{}
+		rv[env], err = getVersions(rs[env])
+		if err != nil {
+			log.Println("Failed getting versions for ", rs[env])
+		}
+		log.Println("Running Versions QA: ", rv[env])
 	}
-
-	log.Println("RUNNING SERVICES QA: ", qa_rs)
-
-	qa_v, err := getVersions(qa_rs)
-	if err != nil {
-		log.Println("Failed getting versions for ", qa_rs)
-	}
-
-	log.Println("Running Versions QA: ", qa_v)
-
-	// PRODUCTION
-	log.Println("Getting available services in production...")
-	prod_rs, err := getServices(prod_urls)
-	if err != nil {
-		log.Println("Failed getting production versions")
-	}
-
-	log.Println("RUNNING SERVICES PRODUCTION: ", prod_rs)
-
-	prod_v, err := getVersions(prod_rs)
-	if err != nil {
-		log.Println("Failed getting versions production ", prod_rs)
-	}
-
-	log.Println("Running Versions PRODUCTION: ", prod_v)
 
 	// Build the compared map of maps of strings of other types ... blah blah blah
 	pv_map := pv.(map[string]interface{})
-	compared, _ := compare(pv_map, qa_v, prod_v)
+	compared, _ := compare(pv_map, rv)
 
 	for k, v := range compared {
 		log.Println(k, " ", v, "\n")
