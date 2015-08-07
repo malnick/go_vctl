@@ -318,10 +318,7 @@ func refreshState() {
 
 func loadPage(title string) (*Page, error) {
 
-	//	for {
-	go refreshState()
-	//		time.Sleep(10000 * 10000 * 10000)
-	//	}
+	//	go refreshState()
 
 	//read state file to compared
 	var compared Compared

@@ -28,14 +28,18 @@ VersionCtl for SRC:CLR
        <table class="table table-bordered">
           <tr>
             <th><b>{{$env}}</b></th>
-            <th>Currently Running</th>
+            <th>Service Endpoint | Mgmt Endpoint</th>
+            <th>Running</th>
             <th><a target="_blank" href="https://github.com/sourceclear/puppet-control/blob/production  /hieradata/versions.yaml">Defined by Puppet: versions.yaml</a> file.</th>
+            <th>Errors</th>
           </tr>
           {{range $svc, $values := .}}
           <tr>
             <td><font color={{$values.color}}><b>{{$svc}}</b></font></td>
-            <td>{{range $k, $v := $values}}{{if ne $k "pv"}}{{if ne $k "color"}}<font color={{$values.color}}>{{$k}}</color> <font color=blue>{{$v}}</color><br></br>{{end}}{{end}}{{end}}</td>
+            <td>{{range $k, $v := $values}}{{if ne $k "pv"}}{{if ne $k "color"}}<font color={{$values.color}}>{{$k}}</color><br></br>{{end}}{{end}}{{end}}</td>
+            <td>{{range $k, $v := $values}}{{if ne $k "pv"}}{{if ne $k "color"}}<font color=blue>{{$v}}</color><br></br>{{end}}{{end}}{{end}}</td>
             <td><font color={{$values.color}}>{{$values.pv}}</color></td>
+            <td>{{range $k, $v := $values}}{{if eq $v "orange"}}{{if ne $k "color"}}{{if ne $k "pv"}}<font color=red>{{$v}}</color><br></br>{{end}}{{end}}{{end}}{{end}}</td>
           </tr>
           {{end}}
         </table>
