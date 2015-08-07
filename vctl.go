@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/gob"
 	"encoding/json"
+	"fmt"
 	"html/template"
 	"io/ioutil"
 	"log"
@@ -202,7 +203,7 @@ func queryServiceVersion(endpoint string) (version string, err error) {
 	resp, err := client.Get(query)
 	if err != nil {
 		log.Println("ERROR querying ", query, " ", err)
-		return "Failed GET Request", err
+		return fmt.Sprintf("Failed: %s", err), err
 	}
 	defer resp.Body.Close()
 
@@ -210,12 +211,12 @@ func queryServiceVersion(endpoint string) (version string, err error) {
 	jsonDataFromHttp, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		log.Println("ERROR unmarsheling data for ", jsonDataFromHttp)
-		return "Failed to read JSON", err
+		return fmt.Sprintf("Failed: %s", err), err
 	}
 	var info_response interface{}
 	err = json.Unmarshal(jsonDataFromHttp, &info_response)
 	if err != nil {
-		return "Failed unmarshel JSON", err
+		return fmt.Sprintf("Failed: %s", err), err
 	}
 	// Parse out the version from the response
 	info_map := info_response.(map[string]interface{})
