@@ -70,6 +70,7 @@ func compare(puppet_v map[string]string, rv map[string]map[string]map[string]str
 	// Get environments from PuppetVersions, populate top level map
 	for p_name, pv := range puppet_v {
 		for env, env_versions := range rv {
+			c[env] = make(map[string]map[string]string)
 			// Create regex match for service name
 			p_name_arry := strings.Split(p_name, "_")
 			match_name := p_name_arry[0]
@@ -77,10 +78,9 @@ func compare(puppet_v map[string]string, rv map[string]map[string]map[string]str
 			match_env, _ := regexp.Compile(p_env)
 			match_svc, _ := regexp.Compile(match_name)
 			if match_env.MatchString(p_name) {
-				// Add the name and puppet version to QA map
 				c[env][match_name] = make(map[string]string)
 				c[env][match_name]["pv"] = pv
-				// Init new array, add versions for this service
+
 				colorize_arry := []string{}
 				colorize_arry = append(colorize_arry, pv)
 				for svc_name, endpoints := range env_versions {
@@ -95,6 +95,9 @@ func compare(puppet_v map[string]string, rv map[string]map[string]map[string]str
 				}
 			}
 		}
+	}
+	for k, v := range c {
+		log.Println(k, v)
 	}
 	return c, nil
 }
@@ -237,12 +240,12 @@ func refreshState() {
 		if err != nil {
 			log.Println("Failed getting services for ", env)
 		}
-		log.Println("Running Services for", env, ":")
-		for service, eps := range rs[env] {
-			for _, ep := range eps {
-				log.Println(service, ep)
-			}
-		}
+		//		log.Println("Running Services for", env, ":")
+		//		for service, eps := range rs[env] {
+		//			for _, ep := range eps {
+		//				log.Println(service, ep)
+		//			}
+		//		}
 		// Get the versions for running services
 		rv[env] = map[string]map[string]string{}
 		rv[env], err = getVersions(rs[env])
@@ -257,12 +260,14 @@ func refreshState() {
 		}
 	}
 
+	log.Println(rv)
+	for k, v := range rv {
+		log.Println(k, v)
+	}
+
 	// Build the compared map of maps of strings of other types ... blah blah blah
 	compared, _ := compare(pv, rv)
 
-	for k, v := range compared {
-		log.Println(k, " ", v, "\n")
-	}
 	datafile, err := os.Create("compared.gob")
 	if err != nil {
 		log.Println(err)
