@@ -17,10 +17,6 @@ type RunningServices struct {
 }
 
 var environments = map[string][]string{
-	"puppet": []string{
-		"http://puppet.ec2.srcclr.com:1015/versions",
-	},
-
 	"production": []string{
 		"http://is.ec2.srcclr.com:3000/services",
 	},
@@ -32,18 +28,8 @@ var environments = map[string][]string{
 	},
 }
 
-var qa_urls = []string{
-	"http://is.qa.ec2.srcclr.com:3000/services",
-	"http://10.0.3.103:3000/services",
-	"http://10.0.3.126:3000/services",
-}
-
-var prod_urls = []string{
-	"http://is.ec2.srcclr.com:3000/services",
-}
-
 // A map for Puppet Versions JSON
-type PuppetVersions interface{}
+type PuppetVersions map[string]string
 
 // The final map to be passed to template
 type Compared map[string]map[string]map[string]string
@@ -79,29 +65,24 @@ func colorize(versions []string) (color string, err error) {
 	return "versions not an array?", err
 }
 
-func compare(puppet_v map[string]interface{}, rv map[string]map[string]map[string]string) (Compared, error) {
+func compare(puppet_v map[string]string, rv map[string]map[string]map[string]string) (Compared, error) {
 	c := make(map[string]map[string]map[string]string)
 	// Get environments from PuppetVersions, populate top level map
-	c["qa"] = make(map[string]map[string]string)
-	c["production"] = make(map[string]map[string]string)
-
 	for p_name, pv := range puppet_v {
 		for env, env_versions := range rv {
 			// Create regex match for service name
 			p_name_arry := strings.Split(p_name, "_")
 			match_name := p_name_arry[0]
-			match_env := p_name_arry[len(p_name_arry)-1]
+			p_env := p_name_arry[len(p_name_arry)-1]
+			match_env, _ := regexp.Compile(p_env)
 			match_svc, _ := regexp.Compile(match_name)
-			pv_string := pv.(string)
-			// Match QA map
 			if match_env.MatchString(p_name) {
 				// Add the name and puppet version to QA map
 				c[env][match_name] = make(map[string]string)
-				c[env][match_name]["pv"] = pv_string
-
+				c[env][match_name]["pv"] = pv
 				// Init new array, add versions for this service
 				colorize_arry := []string{}
-				colorize_arry = append(colorize_arry, pv_string)
+				colorize_arry = append(colorize_arry, pv)
 				for svc_name, endpoints := range env_versions {
 					if match_svc.MatchString(svc_name) {
 						for ep, version := range endpoints {
@@ -114,28 +95,7 @@ func compare(puppet_v map[string]interface{}, rv map[string]map[string]map[strin
 				}
 			}
 		}
-		// Do it again for production env
-		if match_prod.MatchString(p_name) {
-			log.Println("Production MATCH: ", p_name, " ", pv)
-			c["production"][match_name] = make(map[string]string)
-			c["production"][match_name]["pv"] = pv_string
-
-			// Init new array, add versions for this service
-			colorize_arry := []string{}
-			colorize_arry = append(colorize_arry, pv_string)
-			for svc_name, endpoints := range prod_v {
-				if match_svc.MatchString(svc_name) {
-					for ep, version := range endpoints {
-						c["production"][match_name][ep] = version
-						colorize_arry = append(colorize_arry, version)
-						color, _ := colorize(colorize_arry)
-						c["production"][match_name]["color"] = color
-					}
-				}
-			}
-		}
 	}
-
 	return c, nil
 }
 
@@ -147,26 +107,22 @@ func puppetversions(url string) (PuppetVersions, error) {
 		log.Println(err)
 		return nil, err
 	}
-
 	// Read JSON from request
 	jsonDataFromHttp, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
-
 	// Unmarshel the JSON to our struct
 	var v PuppetVersions
 	err = json.Unmarshal(jsonDataFromHttp, &v)
 	if err != nil {
 		return nil, err
 	}
-
 	return v, nil
 }
 
 func getServices(urls []string) (map[string][]string, error) {
 	available_services := make(map[string][]string)
-
 	for _, url := range urls {
 		resp, err := http.Get(url)
 		if err != nil {
@@ -178,18 +134,13 @@ func getServices(urls []string) (map[string][]string, error) {
 		if err != nil {
 			return nil, err
 		}
-
 		var services map[string]map[string][]string //interface{}
-
 		err = json.Unmarshal(jsonDataFromHttp, &services)
 		if err != nil {
 			return nil, err
 		}
-
 		for _, v := range services {
-			log.Println("Values: ", v)
 			for name, endpoints := range v {
-				log.Println("Name: ", name, " ", endpoints)
 				available_services[name] = []string{}
 				for _, ep := range endpoints {
 					available_services[name] = append(available_services[name], ep)
@@ -197,12 +148,10 @@ func getServices(urls []string) (map[string][]string, error) {
 			}
 		}
 	}
-
 	return available_services, nil
 }
 
 func queryServiceVersion(endpoint string) (version string, err error) {
-	log.Println("Querying SERVICE address: ", endpoint)
 	query_arry := []string{"http://", endpoint, "/info"}
 	query := strings.Join(query_arry, "")
 	// Query the URI
@@ -230,13 +179,11 @@ func queryServiceVersion(endpoint string) (version string, err error) {
 	}
 	// Parse out the version from the response
 	info_map := info_response.(map[string]interface{})
-	log.Println("Response: ", info_response)
 	for _, values := range info_map {
 		sub_info_map := values.(map[string]interface{})
 		for key, info := range sub_info_map {
 			string_info := info.(string)
 			if key == "version" {
-				log.Println("Version: ", string_info)
 				return string_info, nil
 			}
 		}
@@ -245,9 +192,7 @@ func queryServiceVersion(endpoint string) (version string, err error) {
 }
 
 func getVersions(services map[string][]string) (runningversions map[string]map[string]string, err error) {
-
 	rv := make(map[string]map[string]string)
-
 	for name, endpoints := range services {
 		rv[name] = make(map[string]string)
 		for _, endpoint := range endpoints {
@@ -275,32 +220,45 @@ func refreshState() {
 		log.Println("Failed to get Puppet Versions from http://puppet.ec2.srcclr.com:1015/versions\n")
 		log.Println(err)
 	}
-	log.Println("Puppet Versions: ", pv)
+	log.Println("Puppet Versions:")
+	for k, v := range pv {
+		log.Println(k, v)
+	}
 
 	var rs = map[string]map[string][]string{}
 	var rv = map[string]map[string]map[string]string{}
 
 	for env, urls := range environments {
 		// For each env, query the :3000/services endpoint
-		log.Println("Getting available services...")
+		log.Println("Querying Haproxy at ", env)
+		log.Println("URLs: ", urls)
 		rs[env] = map[string][]string{}
 		rs[env], err = getServices(urls)
 		if err != nil {
-			log.Println("Failed getting qa versions")
+			log.Println("Failed getting services for ", env)
 		}
-		log.Println("RUNNING SERVICES: ", rs[env])
+		log.Println("Running Services for", env, ":")
+		for service, eps := range rs[env] {
+			for _, ep := range eps {
+				log.Println(service, ep)
+			}
+		}
 		// Get the versions for running services
 		rv[env] = map[string]map[string]string{}
 		rv[env], err = getVersions(rs[env])
 		if err != nil {
-			log.Println("Failed getting versions for ", rs[env])
+			log.Println("Failed getting versions for", env)
 		}
-		log.Println("Running Versions QA: ", rv[env])
+		log.Println("Running Versions in", env, ":")
+		for service, eps := range rv[env] {
+			for ep, version := range eps {
+				log.Println(service, ep, version)
+			}
+		}
 	}
 
 	// Build the compared map of maps of strings of other types ... blah blah blah
-	pv_map := pv.(map[string]interface{})
-	compared, _ := compare(pv_map, rv)
+	compared, _ := compare(pv, rv)
 
 	for k, v := range compared {
 		log.Println(k, " ", v, "\n")
@@ -318,7 +276,7 @@ func refreshState() {
 
 func loadPage(title string) (*Page, error) {
 
-	//	go refreshState()
+	go refreshState()
 
 	//read state file to compared
 	var compared Compared
