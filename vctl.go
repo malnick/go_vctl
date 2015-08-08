@@ -370,6 +370,13 @@ func viewHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	fmt.Println(`____   ____                  .__              ____________________.____      `)
+	fmt.Println(`\   \ /   /___________  _____|__| ____   ____ \_   ___ \__    ___/|    |     `)
+	fmt.Println(` \   Y   // __ \_  __ \/  ___/  |/  _ \ /    \/    \  \/ |    |   |    |     `)
+	fmt.Println(`  \     /\  ___/|  | \/\___ \|  (  <_> )   |  \     \____|    |   |    |___  `)
+	fmt.Println(`   \___/  \___  >__|  /____  >__|\____/|___|  /\______  /|____|   |_______ \ `)
+	fmt.Println(`              \/           \/               \/        \/                  \/ `)
+
 	log.Println("Starting vctl...")
 	http.HandleFunc("/", viewHandler)
 	http.ListenAndServe(":9000", nil)
