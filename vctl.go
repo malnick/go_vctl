@@ -70,6 +70,7 @@ func compare(puppet_v map[string]string, rv map[string]map[string]map[string]str
 	// Get environments from PuppetVersions, populate top level map
 	for p_name, pv := range puppet_v {
 		for env, env_versions := range rv {
+			log.Println("Adding environment", env)
 			c[env] = make(map[string]map[string]string)
 			// Create regex match for service name
 			p_name_arry := strings.Split(p_name, "_")
@@ -78,13 +79,17 @@ func compare(puppet_v map[string]string, rv map[string]map[string]map[string]str
 			match_env, _ := regexp.Compile(p_env)
 			match_svc, _ := regexp.Compile(match_name)
 			if match_env.MatchString(p_name) {
+				log.Println("Matched", p_name)
 				c[env][match_name] = make(map[string]string)
 				c[env][match_name]["pv"] = pv
-
+				log.Println("Adding", match_name, "in environment", env, "with puppet version", pv)
 				colorize_arry := []string{}
 				colorize_arry = append(colorize_arry, pv)
 				for svc_name, endpoints := range env_versions {
+					log.Println("Parsing env versions for", env)
+					log.Println("Service", svc_name)
 					if match_svc.MatchString(svc_name) {
+						log.Println("Matched", svc_name)
 						for ep, version := range endpoints {
 							c[env][match_name][ep] = version
 							colorize_arry = append(colorize_arry, version)
@@ -258,11 +263,6 @@ func refreshState() {
 				log.Println(service, ep, version)
 			}
 		}
-	}
-
-	log.Println(rv)
-	for k, v := range rv {
-		log.Println(k, v)
 	}
 
 	// Build the compared map of maps of strings of other types ... blah blah blah
