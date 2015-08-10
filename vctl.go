@@ -324,9 +324,9 @@ func refreshState() {
 }
 
 func loadPage(title string) (*Page, error) {
-	var t = time.Now().String()
-	log.Println("TIME", t)
 
+	t := time.Now().String()
+	log.Println(t)
 	// Hit and quit it
 	go refreshState()
 
