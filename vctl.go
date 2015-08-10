@@ -35,6 +35,7 @@ type Page struct {
 	Title   string
 	Body    []byte
 	Compare Compared
+	Time    string
 }
 
 // What do *you* think this does?
@@ -258,71 +259,76 @@ func getVersions(services map[string][]string) (runningversions map[string]map[s
 }
 
 func refreshState() {
-	// Get the versions from the puppet master
-	log.Println("Getting Puppet Versions - Make sure VPN is on!")
-	pv, err := puppetversions("http://puppet.ec2.srcclr.com:1015/versions")
-	if err != nil {
-		log.Println("Failed to get Puppet Versions from http://puppet.ec2.srcclr.com:1015/versions\n")
-		log.Println(err)
+	for {
+		// Get the versions from the puppet master
+		log.Println("Getting Puppet Versions - Make sure VPN is on!")
+		pv, err := puppetversions("http://puppet.ec2.srcclr.com:1015/versions")
+		if err != nil {
+			log.Println("Failed to get Puppet Versions from http://puppet.ec2.srcclr.com:1015/versions\n")
+			log.Println(err)
+		}
+		log.Println("Puppet Versions: ", pv)
+
+		// QA
+		log.Println("Getting available services...")
+		qa_rs, err := getServices(qa_urls)
+		if err != nil {
+			log.Println("Failed getting qa versions")
+		}
+
+		log.Println("RUNNING SERVICES QA: ", qa_rs)
+
+		qa_v, err := getVersions(qa_rs)
+		if err != nil {
+			log.Println("Failed getting versions for ", qa_rs)
+		}
+
+		log.Println("Running Versions QA: ", qa_v)
+
+		// PRODUCTION
+		log.Println("Getting available services...")
+		prod_rs, err := getServices(prod_urls)
+		if err != nil {
+			log.Println("Failed getting production versions")
+		}
+
+		log.Println("RUNNING SERVICES QA: ", prod_rs)
+
+		prod_v, err := getVersions(prod_rs)
+		if err != nil {
+			log.Println("Failed getting versions for ", prod_rs)
+		}
+
+		log.Println("Running Versions PRODUCTION: ", prod_v)
+
+		// Build the compared map of maps of strings of other types ... blah blah blah
+		pv_map := pv.(map[string]interface{})
+		compared, _ := compare(pv_map, qa_v, prod_v)
+
+		for k, v := range compared {
+			log.Println(k, " ", v, "\n")
+		}
+		datafile, err := os.Create("compared.gob")
+		if err != nil {
+			log.Println(err)
+			os.Exit(1)
+		}
+
+		dataEncoder := gob.NewEncoder(datafile)
+		dataEncoder.Encode(compared)
+		datafile.Close()
+
+		log.Println("Sleeping...")
+		time.Sleep(time.Second * 10)
 	}
-	log.Println("Puppet Versions: ", pv)
-
-	// QA
-	log.Println("Getting available services...")
-	qa_rs, err := getServices(qa_urls)
-	if err != nil {
-		log.Println("Failed getting qa versions")
-	}
-
-	log.Println("RUNNING SERVICES QA: ", qa_rs)
-
-	qa_v, err := getVersions(qa_rs)
-	if err != nil {
-		log.Println("Failed getting versions for ", qa_rs)
-	}
-
-	log.Println("Running Versions QA: ", qa_v)
-
-	// PRODUCTION
-	log.Println("Getting available services...")
-	prod_rs, err := getServices(prod_urls)
-	if err != nil {
-		log.Println("Failed getting production versions")
-	}
-
-	log.Println("RUNNING SERVICES QA: ", prod_rs)
-
-	prod_v, err := getVersions(prod_rs)
-	if err != nil {
-		log.Println("Failed getting versions for ", prod_rs)
-	}
-
-	log.Println("Running Versions PRODUCTION: ", prod_v)
-
-	// Build the compared map of maps of strings of other types ... blah blah blah
-	pv_map := pv.(map[string]interface{})
-	compared, _ := compare(pv_map, qa_v, prod_v)
-
-	for k, v := range compared {
-		log.Println(k, " ", v, "\n")
-	}
-	datafile, err := os.Create("compared.gob")
-	if err != nil {
-		log.Println(err)
-		os.Exit(1)
-	}
-
-	dataEncoder := gob.NewEncoder(datafile)
-	dataEncoder.Encode(compared)
-	datafile.Close()
 }
 
 func loadPage(title string) (*Page, error) {
+	var t = time.Now().String()
+	log.Println("TIME", t)
 
-	//	for {
+	// Hit and quit it
 	go refreshState()
-	//		time.Sleep(10000 * 10000 * 10000)
-	//	}
 
 	//read state file to compared
 	var compared Compared
@@ -350,6 +356,7 @@ func loadPage(title string) (*Page, error) {
 			Title:   title,
 			Body:    body,
 			Compare: compared,
+			Time:    t,
 		},
 		nil
 }

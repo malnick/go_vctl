@@ -31,6 +31,7 @@ VersionCtl for SRC:CLR
               <th>Service Endpoint | Mgmt Endpoint</th>
               <th>Running</th>
               <th><a target="_blank" href="https://github.com/sourceclear/puppet-control/blob/production/hieradata/versions.yaml">Versions.yaml</a></th>
+              <th>Time Checked</th>
             </tr>
             {{range $svc, $values := .}}
               <tr>
@@ -38,6 +39,7 @@ VersionCtl for SRC:CLR
               <td>{{range $k, $v := $values}}{{if ne $k "pv"}}{{if ne $k "color"}}<font color={{$values.color}}>{{$k}}</color><hr>{{end}}{{end}}{{end}}</td>
               <td>{{range $k, $v := $values}}{{if ne $k "pv"}}{{if ne $k "color"}}<font color=blue>{{$v}}</color><hr>{{end}}{{end}}{{end}}</td>
               <td><font color={{$values.color}}>{{$values.pv}}</color></td>
+              <td>{{.Time}}</td>
             </tr>
             {{end}}
           </table>
