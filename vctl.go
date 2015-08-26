@@ -22,6 +22,8 @@ var qa_urls = []string{
 
 var prod_urls = []string{
 	"http://is.ec2.srcclr.com:3000/services",
+	"http://10.0.5.8:3000/services",
+	"http://10.0.5.201:3000/services",
 }
 
 // A map for Puppet Versions JSON
