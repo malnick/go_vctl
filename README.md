@@ -1,3 +1,4 @@
+<img style="float: center;" src="https://dl.dropboxusercontent.com/u/77193293/vctl.png">
 # VersionCtl
 
 This Go web application queries our internal HaProxy's for available services via [REST HaProxy](https://github.com/malnick/rest_haproxy) then queries all available backend services on their management endpoints for running services. It then compares this to the versions mapped in configuration management (we use puppet, and expose a single hieradata file called versions.yaml, which is managed by Jenkins via a webhook on our Puppet master). 
