@@ -3,16 +3,20 @@ package main
 import (
 	"encoding/gob"
 	"encoding/json"
+	"flag"
 	"fmt"
+	log "github.com/Sirupsen/logrus"
 	"html/template"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"regexp"
 	"strings"
 	"time"
 )
+
+// Verbose mode?
+var verbose = flag.Bool("v", false, "Verbose mode.")
 
 var qa_urls = []string{
 	"http://is.qa.ec2.srcclr.com:3000/services",
@@ -69,12 +73,12 @@ func compare(puppet_v map[string]interface{}, qa_v map[string]map[string]string,
 	// Setup regex for QA match
 	match_qa, err := regexp.Compile(`_qa`)
 	if err != nil {
-		log.Println("Couldn't compile regex")
+		log.Error("Couldn't compile regex")
 		return nil, err
 	}
 	match_prod, err := regexp.Compile(`_production`)
 	if err != nil {
-		log.Println("Couldn't compile regex")
+		log.Error("Couldn't compile regex")
 		return nil, err
 	}
 	// Get environments from PuppetVersions, populate top level map
@@ -109,7 +113,7 @@ func compare(puppet_v map[string]interface{}, qa_v map[string]map[string]string,
 		}
 		// Do it again for production env
 		if match_prod.MatchString(p_name) {
-			log.Println("Production MATCH: ", p_name, " ", pv)
+			log.Debug("Production MATCH: ", p_name, " ", pv)
 			c["production"][match_name] = make(map[string]string)
 			c["production"][match_name]["pv"] = pv_string
 
@@ -137,7 +141,7 @@ func puppetversions(url string) (PuppetVersions, error) {
 	resp, err := http.Get(url)
 	defer resp.Body.Close()
 	if err != nil {
-		log.Println(err)
+		log.Error(err)
 		return nil, err
 	}
 
@@ -163,7 +167,7 @@ func getServices(urls []string) (map[string][]string, error) {
 	for _, url := range urls {
 		resp, err := http.Get(url)
 		if err != nil {
-			log.Println(err)
+			log.Error(err)
 			return nil, err
 		}
 		defer resp.Body.Close()
@@ -180,9 +184,9 @@ func getServices(urls []string) (map[string][]string, error) {
 		}
 
 		for _, v := range services {
-			log.Println("Values: ", v)
+			log.Debug("Values: ", v)
 			for name, endpoints := range v {
-				log.Println("Name: ", name, " ", endpoints)
+				log.Debug("Name: ", name, " ", endpoints)
 				available_services[name] = []string{}
 				for _, ep := range endpoints {
 					available_services[name] = append(available_services[name], ep)
@@ -195,7 +199,7 @@ func getServices(urls []string) (map[string][]string, error) {
 }
 
 func queryServiceVersion(endpoint string) (version string, err error) {
-	log.Println("Querying SERVICE address: ", endpoint)
+	log.Debug("Querying SERVICE address: ", endpoint)
 	query_arry := []string{"http://", endpoint, "/info"}
 	query := strings.Join(query_arry, "")
 	// Query the URI
@@ -205,7 +209,7 @@ func queryServiceVersion(endpoint string) (version string, err error) {
 	}
 	resp, err := client.Get(query)
 	if err != nil {
-		log.Println("ERROR querying ", query, " ", err)
+		log.Debug("ERROR querying ", query, " ", err)
 		return fmt.Sprintf("Failed: %s", err), err
 	}
 	defer resp.Body.Close()
@@ -213,7 +217,7 @@ func queryServiceVersion(endpoint string) (version string, err error) {
 	// Get data and unmarshel the JSON to our map
 	jsonDataFromHttp, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		log.Println("ERROR unmarsheling data for ", jsonDataFromHttp)
+		log.Error("ERROR unmarsheling data for ", jsonDataFromHttp)
 		return fmt.Sprintf("Failed: %s", err), err
 	}
 	var info_response interface{}
@@ -223,13 +227,13 @@ func queryServiceVersion(endpoint string) (version string, err error) {
 	}
 	// Parse out the version from the response
 	info_map := info_response.(map[string]interface{})
-	log.Println("Response: ", info_response)
+	log.Debug("Response: ", info_response)
 	for _, values := range info_map {
 		sub_info_map := values.(map[string]interface{})
 		for key, info := range sub_info_map {
 			string_info := info.(string)
 			if key == "version" {
-				log.Println("Version: ", string_info)
+				log.Debug("Version: ", string_info)
 				return string_info, nil
 			}
 		}
@@ -263,56 +267,53 @@ func getVersions(services map[string][]string) (runningversions map[string]map[s
 func refreshState() {
 	for {
 		// Get the versions from the puppet master
-		log.Println("Getting Puppet Versions - Make sure VPN is on!")
+		log.Debug("Getting Puppet Versions - Make sure VPN is on!")
 		pv, err := puppetversions("http://puppet.ec2.srcclr.com:1015/versions")
 		if err != nil {
-			log.Println("Failed to get Puppet Versions from http://puppet.ec2.srcclr.com:1015/versions\n")
-			log.Println(err)
+			log.Debug("Failed to get Puppet Versions from http://puppet.ec2.srcclr.com:1015/versions\n")
+			log.Error(err)
 		}
-		log.Println("Puppet Versions: ", pv)
+		log.Debug("Puppet Versions: ", pv)
 
 		// QA
-		log.Println("Getting available services...")
+		log.Debug("Getting available services...")
 		qa_rs, err := getServices(qa_urls)
 		if err != nil {
-			log.Println("Failed getting qa versions")
+			log.Error("Failed getting qa versions")
 		}
 
-		log.Println("RUNNING SERVICES QA: ", qa_rs)
+		log.Debug("RUNNING SERVICES QA: ", qa_rs)
 
 		qa_v, err := getVersions(qa_rs)
 		if err != nil {
-			log.Println("Failed getting versions for ", qa_rs)
+			log.Error("Failed getting versions for ", qa_rs)
 		}
 
-		log.Println("Running Versions QA: ", qa_v)
+		log.Debug("Running Versions QA: ", qa_v)
 
 		// PRODUCTION
-		log.Println("Getting available services...")
+		log.Debug("Getting available services...")
 		prod_rs, err := getServices(prod_urls)
 		if err != nil {
-			log.Println("Failed getting production versions")
+			log.Error("Failed getting production versions")
 		}
 
-		log.Println("RUNNING SERVICES QA: ", prod_rs)
+		log.Debug("RUNNING SERVICES QA: ", prod_rs)
 
 		prod_v, err := getVersions(prod_rs)
 		if err != nil {
-			log.Println("Failed getting versions for ", prod_rs)
+			log.Error("Failed getting versions for ", prod_rs)
 		}
 
-		log.Println("Running Versions PRODUCTION: ", prod_v)
+		log.Debug("Running Versions PRODUCTION: ", prod_v)
 
 		// Build the compared map of maps of strings of other types ... blah blah blah
 		pv_map := pv.(map[string]interface{})
 		compared, _ := compare(pv_map, qa_v, prod_v)
 
-		for k, v := range compared {
-			log.Println(k, " ", v, "\n")
-		}
 		datafile, err := os.Create("compared.gob")
 		if err != nil {
-			log.Println(err)
+			log.Error(err)
 			os.Exit(1)
 		}
 
@@ -320,7 +321,6 @@ func refreshState() {
 		dataEncoder.Encode(compared)
 		datafile.Close()
 
-		log.Println("Sleeping...")
 		time.Sleep(time.Second * 10)
 	}
 }
@@ -328,7 +328,6 @@ func refreshState() {
 func loadPage(title string) (*Page, error) {
 
 	t := time.Now().String()
-	log.Println(t)
 	// Hit and quit it
 	go refreshState()
 
@@ -336,13 +335,13 @@ func loadPage(title string) (*Page, error) {
 	var compared Compared
 	datafile, err := os.Open("compared.gob")
 	if err != nil {
-		log.Println(err)
+		log.Error(err)
 	}
 
 	dataDecoder := gob.NewDecoder(datafile)
 	err = dataDecoder.Decode(&compared)
 	if err != nil {
-		log.Println(err)
+		log.Error(err)
 	}
 
 	datafile.Close()
@@ -350,7 +349,7 @@ func loadPage(title string) (*Page, error) {
 	filename := title + ".html"
 	body, err := ioutil.ReadFile(filename)
 	if err != nil {
-		log.Println(err)
+		log.Error(err)
 		return nil, err
 	}
 
@@ -364,18 +363,15 @@ func loadPage(title string) (*Page, error) {
 }
 
 func viewHandler(w http.ResponseWriter, r *http.Request) {
-	log.Println("Loading page view...")
 	title := "versionctl"
 	p, err := loadPage(title)
 	if err != nil {
 		p = &Page{Title: title}
 	}
 
-	// Parse the template, execute and write it to stdout for good measure
-	log.Println("Parsing go template...")
+	// Parse the template
 	t, _ := template.ParseFiles("versionctl.html")
 	t.Execute(w, p)
-	//log.Println("Serving:\n", string(p.Title), string(p.Body))
 }
 
 func main() {
@@ -385,8 +381,15 @@ func main() {
 	fmt.Println(`  \     /\  ___/|  | \/\___ \|  (  <_> )   |  \     \____|    |   |    |___  `)
 	fmt.Println(`   \___/  \___  >__|  /____  >__|\____/|___|  /\______  /|____|   |_______ \ `)
 	fmt.Println(`              \/           \/               \/        \/                  \/ `)
-
-	log.Println("Starting vctl...")
+	// Set log level
+	flag.Parse()
+	if *verbose {
+		log.SetLevel(log.DebugLevel)
+	} else {
+		log.SetLevel(log.InfoLevel)
+	}
+	// Pass view handler to HTTP func
 	http.HandleFunc("/", viewHandler)
+	// Deploy server
 	http.ListenAndServe(":9000", nil)
 }
