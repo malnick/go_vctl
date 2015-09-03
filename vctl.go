@@ -321,7 +321,7 @@ func refreshState() {
 		dataEncoder.Encode(compared)
 		datafile.Close()
 
-		time.Sleep(time.Second * 10)
+		time.Sleep(time.Second * 120)
 	}
 }
 
